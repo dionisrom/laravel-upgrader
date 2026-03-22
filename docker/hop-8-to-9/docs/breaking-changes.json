@@ -1,0 +1,502 @@
+{
+  "hop": "8_to_9",
+  "laravel_from": "8.x",
+  "laravel_to": "9.x",
+  "php_minimum": "8.0",
+  "last_curated": "2026-03-21",
+  "breaking_changes": [
+    {
+      "id": "l9_model_dates_removed",
+      "severity": "high",
+      "category": "eloquent",
+      "title": "Model $dates property removed",
+      "description": "The $dates property on Eloquent models has been removed in Laravel 9. You must use the $casts property with 'datetime' cast instead. Existing $dates entries must be migrated to $casts.",
+      "rector_rule": "RectorLaravel\\Rector\\Class_\\UnifyModelDatesWithCastsRector",
+      "automated": true,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": "protected \\$dates",
+      "migration_example": {
+        "before": "protected $dates = ['deleted_at', 'published_at'];",
+        "after": "protected $casts = ['deleted_at' => 'datetime', 'published_at' => 'datetime'];"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#dates-property"
+    },
+    {
+      "id": "l9_castable_interface_change",
+      "severity": "high",
+      "category": "eloquent",
+      "title": "Custom cast classes implementing Castable must return class string",
+      "description": "The Castable interface's castUsing() method now receives an array of $arguments instead of variadic arguments. Classes implementing Castable::castUsing() must update their signature.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": true,
+      "detection_pattern": "implements Castable",
+      "migration_example": {
+        "before": "public static function castUsing(...$arguments) { return MyCast::class; }",
+        "after": "public static function castUsing(array $arguments): string { return MyCast::class; }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#custom-casts-and-null"
+    },
+    {
+      "id": "l9_model_new_collection_signature",
+      "severity": "medium",
+      "category": "eloquent",
+      "title": "Model::newCollection() signature changed — array argument required",
+      "description": "The newCollection() method on Eloquent models now requires an explicit array type hint on its parameter. Any custom model overriding this method must add the type hint.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": "function newCollection",
+      "migration_example": {
+        "before": "public function newCollection($models = []) { return new CustomCollection($models); }",
+        "after": "public function newCollection(array $models = []): \\Illuminate\\Database\\Eloquent\\Collection { return new CustomCollection($models); }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#custom-eloquent-model-collection"
+    },
+    {
+      "id": "l9_authenticate_with_basic_auth_constructor",
+      "severity": "medium",
+      "category": "middleware",
+      "title": "AuthenticateWithBasicAuth middleware constructor signature changed",
+      "description": "The AuthenticateWithBasicAuth middleware constructor now receives a Guard instance as its first argument rather than resolving it from the container implicitly. Applications extending this middleware must update their constructors.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "AuthenticateWithBasicAuth",
+      "migration_example": {
+        "before": "public function __construct() { $this->guard = app('auth'); }",
+        "after": "public function __construct(\\Illuminate\\Contracts\\Auth\\Factory $auth) { $this->auth = $auth; }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-authenticate-with-basic-auth-middleware"
+    },
+    {
+      "id": "l9_gate_after_false_ignored",
+      "severity": "high",
+      "category": "middleware",
+      "title": "Gate::after() no longer overrides explicit denials",
+      "description": "In Laravel 9, Gate::after() callbacks that return false no longer override an explicit false returned by a Gate::before() or policy. Previously a false from an after() callback could override policy decisions; this was a bug. Applications relying on after() returning false to deny access must migrate to before() or policies.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "Gate::after",
+      "migration_example": {
+        "before": "Gate::after(function ($user, $ability) { return false; // was incorrectly blocking });",
+        "after": "Gate::before(function ($user, $ability) { return false; // use before() to explicitly deny });"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-gate-after-method"
+    },
+    {
+      "id": "l9_kernel_bootstrappers_removed",
+      "severity": "high",
+      "category": "config",
+      "title": "Console Kernel $bootstrappers property removed",
+      "description": "The protected $bootstrappers property on Illuminate\\Foundation\\Console\\Kernel has been removed. Applications that overrode $bootstrappers to customise bootstrap classes must switch to overriding the bootstrappers() method.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "\\$bootstrappers",
+      "migration_example": {
+        "before": "protected $bootstrappers = [\\App\\Bootstrap\\RegisterFacades::class];",
+        "after": "protected function bootstrappers(): array { return [\\App\\Bootstrap\\RegisterFacades::class]; }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-kernel-contract"
+    },
+    {
+      "id": "l9_schedule_expression_passes_protected",
+      "severity": "low",
+      "category": "config",
+      "title": "Schedule::expressionPasses() made protected",
+      "description": "The expressionPasses() method on Illuminate\\Console\\Scheduling\\Event was changed from public to protected. External code calling this method directly will throw a fatal error.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "->expressionPasses()",
+      "migration_example": {
+        "before": "$event->expressionPasses();",
+        "after": "// use isDue() or check via the scheduler — direct access was never part of the public API"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-expression-passes-method"
+    },
+    {
+      "id": "l9_connection_interface_select_signature",
+      "severity": "high",
+      "category": "eloquent",
+      "title": "ConnectionInterface::select() signature change",
+      "description": "The select() method on Illuminate\\Database\\ConnectionInterface now has an updated signature. Custom connection implementations must add the $useReadPdo parameter to their select() methods.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": true,
+      "detection_pattern": "implements ConnectionInterface",
+      "migration_example": {
+        "before": "public function select(string $query, array $bindings = []): array",
+        "after": "public function select(string $query, array $bindings = [], bool $useReadPdo = true): array"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#database"
+    },
+    {
+      "id": "l9_grammar_compile_insert_get_id",
+      "severity": "medium",
+      "category": "eloquent",
+      "title": "Grammar::compileInsertGetId() signature changed",
+      "description": "The compileInsertGetId() method in database grammar classes now requires an explicit string type on the $sequence parameter. Custom grammar subclasses must add this type hint.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "compileInsertGetId",
+      "migration_example": {
+        "before": "public function compileInsertGetId(Builder $query, array $values, $sequence): string",
+        "after": "public function compileInsertGetId(Builder $query, array $values, ?string $sequence): string"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#database"
+    },
+    {
+      "id": "l9_pdo_integer_binding_removed",
+      "severity": "medium",
+      "category": "eloquent",
+      "title": "PDO integer binding (PDO::PARAM_INT) no longer used",
+      "description": "Laravel 9 no longer uses PDO::PARAM_INT when binding integer values to queries. All values are bound as PDO::PARAM_STR. Applications that relied on database-level integer casting from PDO bindings may see behavioural differences with strict comparison in stored procedures or triggers.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": true,
+      "detection_pattern": "PDO::PARAM_INT",
+      "migration_example": {
+        "before": "// Laravel internally used PDO::PARAM_INT for integer values",
+        "after": "// All values now bound with PDO::PARAM_STR — ensure stored procs handle string-typed integers"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#database"
+    },
+    {
+      "id": "l9_sqlite_minimum_version",
+      "severity": "high",
+      "category": "environment",
+      "title": "SQLite minimum version bumped to 3.26.0",
+      "description": "Laravel 9 requires SQLite 3.26.0 or higher. Environments running older SQLite versions (common on Ubuntu 18.04 / macOS High Sierra era) will fail at runtime when using SQLite databases.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": null,
+      "migration_example": {
+        "before": "# SQLite 3.25.x or older in production/CI",
+        "after": "# Upgrade SQLite to >= 3.26.0. On Ubuntu: apt-get install sqlite3"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#sqlite-minimum-version"
+    },
+    {
+      "id": "l9_request_route_return_type",
+      "severity": "medium",
+      "category": "routing",
+      "title": "Request::route() return type narrowed",
+      "description": "The return type of Request::route() is now Route|object|string|null rather than mixed. Code that passes the return value to functions expecting mixed or relies on implicit casting may need updating. Additionally, type-checking the return value is now recommended.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "->route()",
+      "migration_example": {
+        "before": "$route = $request->route(); // previously mixed",
+        "after": "/** @var \\Illuminate\\Routing\\Route|null $route */ $route = $request->route();"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-route-method"
+    },
+    {
+      "id": "l9_controller_call_action_signature",
+      "severity": "medium",
+      "category": "routing",
+      "title": "Controller::callAction() signature changed",
+      "description": "The callAction() method on Illuminate\\Routing\\Controller now explicitly type-hints its parameters. Custom controllers or middleware that override callAction() must update their signatures to match.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "callAction",
+      "migration_example": {
+        "before": "public function callAction($method, $parameters)",
+        "after": "public function callAction(string $method, array $parameters): mixed"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-call-action-method"
+    },
+    {
+      "id": "l9_symfony_http_foundation_6",
+      "severity": "high",
+      "category": "middleware",
+      "title": "Symfony HttpFoundation upgraded to v6 — Response::prepare() behaviour changed",
+      "description": "Laravel 9 uses Symfony HttpFoundation 6.x. Response::prepare() now enforces stricter behaviour: Content-Type headers are set more aggressively, and HTTP/2 responses handle headers differently. Applications subclassing Response or manipulating headers directly must be reviewed.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "Response::prepare|BinaryFileResponse|StreamedResponse",
+      "migration_example": {
+        "before": "// Symfony 5 Response::prepare() was lenient about Content-Type on 204/304",
+        "after": "// Review any response subclasses; test all endpoints returning non-200 status codes"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#symfony-mailer"
+    },
+    {
+      "id": "l9_route_namespace_option_removed",
+      "severity": "high",
+      "category": "routing",
+      "title": "Route group namespace option removed",
+      "description": "The 'namespace' option in Route::group() and Route::prefix() has been removed. In Laravel 9 you must use fully-qualified class names or import controller classes. The RouteServiceProvider's $namespace property must also be removed or set to null.",
+      "rector_rule": "RectorLaravel\\Rector\\StaticCall\\RouteActionCallableRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "'namespace'\\s*=>",
+      "migration_example": {
+        "before": "Route::group(['namespace' => 'App\\Http\\Controllers'], function () { Route::get('/', 'HomeController@index'); });",
+        "after": "Route::group([], function () { Route::get('/', \\App\\Http\\Controllers\\HomeController::class . '@index'); });"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#routing"
+    },
+    {
+      "id": "l9_rule_where_not_renamed",
+      "severity": "medium",
+      "category": "helpers",
+      "title": "Rule::unique()/Rule::exists() whereNot() renamed to whereNotIn()",
+      "description": "The whereNot() method on Illuminate\\Validation\\Rules\\Unique and Illuminate\\Validation\\Rules\\Exists has been renamed to whereNotIn(). Call sites using ->whereNot() must be updated.",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L8ToL9\\WhereNotToWhereNotInRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "->whereNot\\(",
+      "migration_example": {
+        "before": "Rule::unique('users', 'email')->whereNot('status', 'inactive')",
+        "after": "Rule::unique('users', 'email')->whereNotIn('status', ['inactive'])"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#validation-rule-unique-where-not"
+    },
+    {
+      "id": "l9_php_8_minimum",
+      "severity": "blocker",
+      "category": "environment",
+      "title": "PHP 8.0 minimum requirement enforced",
+      "description": "Laravel 9 requires PHP 8.0 or higher. PHP 7.x is not supported. The application, all dependencies, and the host runtime must be running PHP 8.0+.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": null,
+      "migration_example": {
+        "before": "\"php\": \"^7.4|^8.0\" in composer.json",
+        "after": "\"php\": \"^8.0\" in composer.json"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#updating-dependencies"
+    },
+    {
+      "id": "l9_flysystem_v3",
+      "severity": "high",
+      "category": "package",
+      "title": "Flysystem upgraded to v3 — Storage facade method changes",
+      "description": "Laravel 9 uses league/flysystem v3. Several Storage facade methods changed: getVisibility()/setVisibility() now use Visibility constants, url() and temporaryUrl() signatures changed, and many methods no longer accept null. The FileExistsException and FileNotFoundException no longer exist.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": true,
+      "detection_pattern": "Storage::|->temporaryUrl\\(|->getVisibility\\(|->setVisibility\\(",
+      "migration_example": {
+        "before": "Storage::getVisibility($path); // returns 'public' or 'private'",
+        "after": "Storage::visibility($path); // use visibility() method; returns Visibility::PUBLIC constant"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#flysystem-3"
+    },
+    {
+      "id": "l9_session_handler_write_return_type",
+      "severity": "medium",
+      "category": "config",
+      "title": "SessionHandlerInterface::write() must return bool",
+      "description": "PHP 8.0 changed the SessionHandlerInterface so that the write() method must return bool (not int|bool). Custom session handlers that return 1 (truthy int) or other non-bool values will cause a TypeError at runtime on PHP 8.0+.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": "implements SessionHandlerInterface|extends.*SessionHandler",
+      "migration_example": {
+        "before": "public function write($sessionId, $data) { $this->store->put($sessionId, $data); return 1; }",
+        "after": "public function write(string $sessionId, string $data): bool { $this->store->put($sessionId, $data); return true; }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-session-handler-interface"
+    },
+    {
+      "id": "l9_carbon_v2_microseconds",
+      "severity": "medium",
+      "category": "helpers",
+      "title": "Carbon v2 — constructor microsecond handling changed",
+      "description": "Carbon v2 (used by Laravel 9) changed how microseconds are handled in the constructor. Passing a datetime string with microseconds may produce unexpected results in some edge cases. Code comparing Carbon instances with microsecond precision should be reviewed.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": true,
+      "detection_pattern": "Carbon::create|new Carbon\\(",
+      "migration_example": {
+        "before": "$dt = new Carbon('2021-01-01 12:00:00.000000'); // microseconds may be stripped",
+        "after": "$dt = Carbon::createFromFormat('Y-m-d H:i:s.u', '2021-01-01 12:00:00.000000'); // explicit format"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#symfony-mailer"
+    },
+    {
+      "id": "l9_symfony_mailer_replaces_swiftmailer",
+      "severity": "high",
+      "category": "package",
+      "title": "SwiftMailer replaced by Symfony Mailer",
+      "description": "Laravel 9 replaces SwiftMailer with Symfony Mailer. The Swift_Message class and all Swift_* classes are gone. Mailables, transporters, and plugins relying on SwiftMailer must be migrated. The Message class now wraps Symfony's Email object. Custom mail plugins implementing Swift_Events_SendListener must be rewritten.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "Swift_|SwiftMailer|withSwiftMessage",
+      "migration_example": {
+        "before": "Mail::send([], [], function (\\Swift_Message $message) { $message->attach(...); });",
+        "after": "// Use Mailable classes with attachments() method or $mail->html() on Symfony Email"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#symfony-mailer"
+    },
+    {
+      "id": "l9_string_slugify_ascii_removal",
+      "severity": "low",
+      "category": "helpers",
+      "title": "Str::slug() now uses ASCII transliteration by default",
+      "description": "Str::slug() and Str::ascii() now use a different underlying transliteration library in Laravel 9 (via voku/portable-ascii). Some characters that previously passed through may now be transliterated or stripped differently.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "Str::slug|Str::ascii",
+      "migration_example": {
+        "before": "Str::slug('Héllo Wörld'); // may produce slightly different results",
+        "after": "// Test slug output for non-ASCII characters after upgrade; review URL generation"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#helpers"
+    },
+    {
+      "id": "l9_cast_interface_return_type",
+      "severity": "medium",
+      "category": "eloquent",
+      "title": "CastsAttributes interface now requires return type declarations",
+      "description": "The CastsAttributes interface in Laravel 9 has updated signatures for get() and set(). Custom cast classes that implement CastsAttributes must update their method signatures to include nullable return types.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": "implements CastsAttributes",
+      "migration_example": {
+        "before": "public function get($model, string $key, $value, array $attributes) { return ...; }",
+        "after": "public function get(mixed $model, string $key, mixed $value, array $attributes): mixed { return ...; }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#custom-casts-and-null"
+    },
+    {
+      "id": "l9_http_client_throw_exception",
+      "severity": "medium",
+      "category": "helpers",
+      "title": "HTTP Client throw() method added — exception handling changed",
+      "description": "The HTTP Client's throw() method now accepts a closure. Existing code checking response status with ->throw() should be reviewed to ensure the new closure-based API doesn't conflict with existing exception handling.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "->throw()",
+      "migration_example": {
+        "before": "Http::get('...')->throw();",
+        "after": "Http::get('...')->throw(fn ($e) => $e->response->serverError()); // optional closure"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#http-client"
+    },
+    {
+      "id": "l9_queue_job_return_type",
+      "severity": "low",
+      "category": "config",
+      "title": "Queue ShouldQueue jobs — handle() return type must be void",
+      "description": "In Laravel 9, the handle() method on queued jobs should declare a void return type. While PHP does not enforce this for interface compliance in all cases, strict analysis tools and future Laravel versions require it.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "implements ShouldQueue",
+      "migration_example": {
+        "before": "public function handle() { // process }",
+        "after": "public function handle(): void { // process }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#queues"
+    },
+    {
+      "id": "l9_throttle_rate_limiter_api",
+      "severity": "medium",
+      "category": "middleware",
+      "title": "API middleware throttle string changed from 'throttle:6,1' to 'throttle:api'",
+      "description": "In Laravel 9, the default API rate limiter is defined via RouteServiceProvider::configureRateLimiting(). The api middleware group should reference 'throttle:api' (a named rate limiter) instead of the legacy 'throttle:6,1' format.",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L8ToL9\\HttpKernelMiddlewareRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "throttle:6,1",
+      "migration_example": {
+        "before": "protected $middlewareGroups = ['api' => ['throttle:6,1', ...]];",
+        "after": "protected $middlewareGroups = ['api' => ['throttle:api', ...]];"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-http-kernel"
+    },
+    {
+      "id": "l9_model_unguard_deprecated",
+      "severity": "medium",
+      "category": "eloquent",
+      "title": "Model::unguard() and Model::reguard() static calls removed",
+      "description": "The Model::unguard() and Model::reguard() static calls were commonly used in seeders and tests to temporarily disable mass-assignment protection. In Laravel 9+, the recommended approach is to set protected $guarded = [] on individual models or use forceFill(). These calls are removed automatically.",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L8ToL9\\ModelUnguardRector",
+      "automated": true,
+      "affects_lumen": true,
+      "manual_review_required": false,
+      "detection_pattern": "Model::unguard|Model::reguard",
+      "migration_example": {
+        "before": "Model::unguard(); $user->fill([...]); Model::reguard();",
+        "after": "$user->fill([...]);"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#eloquent"
+    },
+    {
+      "id": "l9_password_rule_methods_renamed",
+      "severity": "medium",
+      "category": "helpers",
+      "title": "Password validation rule helper methods renamed",
+      "description": "The helper methods on Illuminate\\Validation\\Rules\\Password were renamed in Laravel 9: requireLetters() → letters(), requireMixedCase() → mixedCase(), requireNumbers() → numbers(), requireSymbols() → symbols(), requireUncompromised() → uncompromised().",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L8ToL9\\PasswordRuleRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "->requireLetters\\(|->requireMixedCase\\(|->requireNumbers\\(|->requireSymbols\\(|->requireUncompromised\\(",
+      "migration_example": {
+        "before": "Password::min(8)->requireLetters()->requireMixedCase()->requireNumbers()",
+        "after": "Password::min(8)->letters()->mixedCase()->numbers()"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-password-rule-object"
+    },
+    {
+      "id": "l9_accessor_mutator_simplified",
+      "severity": "low",
+      "category": "eloquent",
+      "title": "Eloquent accessor/mutator style — new Attribute::make() syntax available",
+      "description": "Laravel 9 introduced a simplified attribute accessor/mutator syntax using Attribute::make(). The old getFooAttribute()/setFooAttribute() style still works but is deprecated. The new syntax consolidates getter and setter into a single method returning an Attribute object.",
+      "rector_rule": "RectorLaravel\\Rector\\ClassMethod\\MigrateToSimplifiedAttributeRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "get[A-Z][a-zA-Z]+Attribute|set[A-Z][a-zA-Z]+Attribute",
+      "migration_example": {
+        "before": "public function getFirstNameAttribute($value) { return ucfirst($value); }",
+        "after": "public function firstName(): Attribute { return Attribute::make(get: fn ($value) => ucfirst($value)); }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#eloquent-accessors-and-mutators"
+    }
+  ]
+}

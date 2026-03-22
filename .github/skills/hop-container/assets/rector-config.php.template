@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+// ============================================================
+// Rector Config: {HOP_NAME}
+// ============================================================
+//
+// FOR LARAVEL HOPS: Use LaravelSetList + custom rules
+// FOR PHP HOPS:     Use LevelSetList ONLY — no custom rules
+//
+// ============================================================
+
+use Rector\Config\RectorConfig;
+use Rector\Set\ValueObject\LevelSetList;
+// use RectorLaravel\Set\LaravelSetList;
+
+// Custom rules for this hop (Laravel hops only):
+// use App\Rector\Rules\L9ToL10\ReturnTypeRector;
+
+return RectorConfig::configure()
+    ->withPaths(['/workspace'])
+    ->withSkipPath('/workspace/vendor')
+    ->withSkipPath('/workspace/storage')
+    ->withSkipPath('/workspace/bootstrap/cache')
+
+    // ── Laravel hop: uncomment and set the correct version ────────────────
+    // ->withSets([
+    //     LaravelSetList::LARAVEL_90,        // replace with target version
+    // ])
+    // ->withRules([
+    //     ReturnTypeRector::class,           // add custom gap-fill rules
+    // ])
+
+    // ── PHP hop: uncomment and set the correct level ───────────────────────
+    // ->withSets([
+    //     LevelSetList::UP_TO_PHP_81,        // replace with target PHP version
+    // ])
+    // ->withPhpSets(php81: true)            // replace with target PHP version
+
+    ->withParallel()
+    ->withImportNames(importDocBlockClassNames: false);

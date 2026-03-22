@@ -1,0 +1,323 @@
+{
+  "generated": "2025-01-01",
+  "packages": {
+    "laravel/sanctum": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.0",
+      "notes": ""
+    },
+    "laravel/horizon": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^5.10",
+      "notes": ""
+    },
+    "laravel/telescope": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^4.9",
+      "notes": ""
+    },
+    "laravel/passport": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^11.0",
+      "notes": ""
+    },
+    "laravel/cashier": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^14.0",
+      "notes": "Stripe integration; v14 required for L9"
+    },
+    "laravel/scout": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^9.0",
+      "notes": ""
+    },
+    "laravel/socialite": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^5.5",
+      "notes": ""
+    },
+    "laravel/breeze": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.7",
+      "notes": ""
+    },
+    "laravel/jetstream": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.6",
+      "notes": "v2 for L9, v3 for L10+"
+    },
+    "laravel/fortify": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.13",
+      "notes": ""
+    },
+    "laravel/octane": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.3",
+      "notes": "Requires Swoole or RoadRunner"
+    },
+    "laravel/nova": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^4.0",
+      "notes": "Nova 4 required for L9; license required"
+    },
+    "laravel/pint": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.0",
+      "notes": "Code style fixer; dev dependency"
+    },
+    "laravel/pennant": {
+      "l9_support": false,
+      "l10_support": true,
+      "recommended_version": "^1.0",
+      "notes": "Pennant was introduced in L10; not available for L9"
+    },
+    "spatie/laravel-permission": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^5.5",
+      "notes": ""
+    },
+    "spatie/laravel-medialibrary": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^10.0",
+      "notes": "v10 required for L9 compatibility"
+    },
+    "spatie/laravel-activitylog": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^4.4",
+      "notes": ""
+    },
+    "spatie/laravel-backup": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^8.1",
+      "notes": "v8 required for L9"
+    },
+    "spatie/laravel-query-builder": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^5.1",
+      "notes": ""
+    },
+    "spatie/laravel-sluggable": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.3",
+      "notes": ""
+    },
+    "spatie/laravel-settings": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.0",
+      "notes": ""
+    },
+    "spatie/laravel-image-optimizer": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.6",
+      "notes": ""
+    },
+    "spatie/laravel-tags": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^4.3",
+      "notes": ""
+    },
+    "spatie/laravel-translatable": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^6.3",
+      "notes": ""
+    },
+    "livewire/livewire": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.10",
+      "notes": "Livewire v3 for L10+"
+    },
+    "filament/filament": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.0",
+      "notes": "Filament v2 for L9, v3 for L10+"
+    },
+    "barryvdh/laravel-debugbar": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.6",
+      "notes": ""
+    },
+    "barryvdh/laravel-dompdf": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.0",
+      "notes": "v2 required for L9"
+    },
+    "barryvdh/laravel-ide-helper": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.12",
+      "notes": "Dev dependency"
+    },
+    "tymon/jwt-auth": {
+      "l9_support": "unknown",
+      "l10_support": "unknown",
+      "recommended_version": null,
+      "notes": "Check package GitHub for L9 support; consider switching to laravel/sanctum"
+    },
+    "doctrine/dbal": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.3",
+      "notes": "v3 required for L9; v2 is incompatible"
+    },
+    "predis/predis": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.0",
+      "notes": "v2 required for PHP 8+; v1 is end-of-life"
+    },
+    "intervention/image": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.7",
+      "notes": "v3 available but has breaking changes; v2.7+ compatible with L9"
+    },
+    "maatwebsite/excel": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.1",
+      "notes": "Laravel Excel; v3.1.48+ required for L9"
+    },
+    "league/flysystem-aws-s3-v3": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.0",
+      "notes": "v3 required; L9 dropped Flysystem v1 support"
+    },
+    "nWidart/laravel-modules": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^9.0",
+      "notes": "Module management; v9 required for L9"
+    },
+    "yajra/laravel-datatables-oracle": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^10.0",
+      "notes": "v10 required for L9 compatibility"
+    },
+    "aws/aws-sdk-php-laravel": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.6",
+      "notes": ""
+    },
+    "pusher/pusher-php-server": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^7.0",
+      "notes": "v7 required for PHP 8+ compatibility"
+    },
+    "fruitcake/laravel-cors": {
+      "l9_support": false,
+      "l10_support": false,
+      "recommended_version": null,
+      "notes": "Abandoned; L9 includes CORS handling natively via config/cors.php — remove this package"
+    },
+    "fideloper/proxy": {
+      "l9_support": false,
+      "l10_support": false,
+      "recommended_version": null,
+      "notes": "Abandoned; L9 includes TrustProxies middleware natively — remove this package"
+    },
+    "laravel/helpers": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.5",
+      "notes": "Restores deprecated helper functions; consider refactoring to remove dependency"
+    },
+    "tightenco/collect": {
+      "l9_support": false,
+      "l10_support": false,
+      "recommended_version": null,
+      "notes": "Use illuminate/collections directly; tightenco/collect is a standalone backport no longer needed"
+    },
+    "rap2hpoutre/laravel-log-viewer": {
+      "l9_support": "unknown",
+      "l10_support": "unknown",
+      "recommended_version": null,
+      "notes": "Check for L9-compatible release; consider alternative log viewers"
+    },
+    "sentry/sentry-laravel": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^3.0",
+      "notes": "v3 required for L9"
+    },
+    "bugsnag/bugsnag-laravel": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.23",
+      "notes": ""
+    },
+    "staudenmeir/eloquent-has-many-deep": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^1.14",
+      "notes": ""
+    },
+    "webpatser/laravel-uuid": {
+      "l9_support": false,
+      "l10_support": false,
+      "recommended_version": null,
+      "notes": "Abandoned; use ramsey/uuid or Laravel's built-in Str::uuid() instead"
+    },
+    "thomaswelton/laravel-gravatar": {
+      "l9_support": "unknown",
+      "l10_support": "unknown",
+      "recommended_version": null,
+      "notes": "Verify L9 compatibility; package has low maintenance activity"
+    },
+    "creativeorange/gravatar": {
+      "l9_support": "unknown",
+      "l10_support": "unknown",
+      "recommended_version": null,
+      "notes": "Verify L9 compatibility"
+    },
+    "jenssegers/agent": {
+      "l9_support": "unknown",
+      "l10_support": "unknown",
+      "recommended_version": null,
+      "notes": "Abandoned; consider alternatives like whichbrowser/parser"
+    },
+    "simplesoftwareio/simple-qrcode": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^4.2",
+      "notes": ""
+    },
+    "dompdf/dompdf": {
+      "l9_support": true,
+      "l10_support": true,
+      "recommended_version": "^2.0",
+      "notes": "Direct dependency; prefer barryvdh/laravel-dompdf wrapper"
+    }
+  }
+}

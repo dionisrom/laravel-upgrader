@@ -1,0 +1,43 @@
+{
+  "hop": "hop-N-to-M",
+  "from_version": "N",
+  "to_version": "M",
+  "generated": "YYYY-MM-DD",
+  "sources": [
+    "https://laravel.com/docs/M/upgrade",
+    "https://github.com/laravel/framework/blob/vM.0/CHANGELOG.md",
+    "https://github.com/driftingly/rector-laravel/blob/main/CHANGELOG.md"
+  ],
+  "changes": [
+    {
+      "id": "BC-001",
+      "title": "Short title of breaking change",
+      "description": "Detailed description of what changed, why it breaks, and what the fix is.",
+      "severity": "error",
+      "category": "api",
+      "auto_fixable": true,
+      "rector_rule": "App\\Rector\\Rules\\LNToLM\\ExampleRector",
+      "affected_pattern": "**/*.php",
+      "before": "$result = $this->oldMethod($arg);",
+      "after": "$result = $this->newMethod($arg);",
+      "references": [
+        "https://laravel.com/docs/M/upgrade#example-change"
+      ]
+    },
+    {
+      "id": "BC-002",
+      "title": "Example non-auto-fixable change",
+      "description": "A behavior change that cannot be automatically fixed — requires human review.",
+      "severity": "warning",
+      "category": "behavior",
+      "auto_fixable": false,
+      "rector_rule": null,
+      "affected_pattern": "**/*.php",
+      "before": null,
+      "after": null,
+      "references": [
+        "https://laravel.com/docs/M/upgrade#another-change"
+      ]
+    }
+  ]
+}

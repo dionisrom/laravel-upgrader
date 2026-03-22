@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+
+$application = new Application('Laravel Enterprise Upgrader', App\Commands\RunCommand::VERSION);
+
+$application->add(new App\Commands\RunCommand());
+$application->add(new App\Commands\AnalyseCommand());
+$application->add(new App\Commands\DashboardCommand());
+$application->add(new App\Commands\VersionCommand());
+
+$application->run();

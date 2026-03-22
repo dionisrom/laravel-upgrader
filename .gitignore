@@ -1,0 +1,29 @@
+*.docx
+/vendor/
+/node_modules/
+/.phpunit.cache/
+/.php-cs-fixer.cache/
+/phpstan-result-cache.php
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+/dist/
+/build/
+
+# Container vendor dirs (never commit these)
+src-container/vendor/
+docker/*/vendor/
+
+# Temporary working directories
+_tmp_lumen/
+_tmp_*/
+

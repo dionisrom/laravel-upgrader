@@ -1,0 +1,45 @@
+{
+    "name": "laravel-upgrader/laravel-upgrader",
+    "description": "Automated Laravel Enterprise Upgrader — upgrades Laravel 8→13 and PHP 8.0→8.5",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2",
+        "ramsey/uuid": "^4.0",
+        "react/event-loop": "^1.3",
+        "react/http": "^1.9",
+        "react/socket": "^1.14",
+        "symfony/console": "^6.4 || ^7.0",
+        "symfony/process": "^6.4 || ^7.0"
+    },
+    "require-dev": {
+        "driftingly/rector-laravel": "1.0",
+        "phpstan/phpstan": "^1.10",
+        "phpunit/phpunit": "^11.0",
+        "rector/rector": "1.0",
+        "squizlabs/php_codesniffer": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/",
+            "AppContainer\\": "src-container/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "bin": ["bin/upgrader"],
+    "scripts": {
+        "test": "phpunit --configuration phpunit.xml.dist --testsuite unit --no-coverage",
+        "test:integration": "phpunit --configuration phpunit.xml.dist --testsuite integration --no-coverage",
+        "phpstan": "phpstan analyse src src-container --level=6 --no-progress --memory-limit=512M",
+        "cs-check": "phpcs --standard=PSR12 src src-container"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}

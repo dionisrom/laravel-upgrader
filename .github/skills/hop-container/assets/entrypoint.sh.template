@@ -1,0 +1,84 @@
+#!/bin/sh
+# ============================================================
+# Entrypoint: {HOP_NAME}
+# Emits JSON-ND on stdout ONLY. All debug output to stderr.
+# Exits non-zero on any failure.
+# ============================================================
+set -euo pipefail
+
+HOP_NAME="{HOP_NAME}"
+RECTOR_CONFIG="/upgrader/rector-configs/rector.{hop-slug}.php"
+WORKSPACE="${WORKSPACE:-/workspace}"
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+emit() {
+    local type="$1"
+    local data="${2:-{}}"
+    printf '{"type":"%s","hop":"%s","data":%s}\n' "$type" "$HOP_NAME" "$data"
+}
+
+fail() {
+    local stage="$1"
+    local exit_code="${2:-1}"
+    emit "hop.failed" "{\"stage\":\"$stage\",\"exit_code\":$exit_code}"
+    exit "$exit_code"
+}
+
+# ─── Start ────────────────────────────────────────────────────────────────────
+
+emit "hop.started" "{\"workspace\":\"$WORKSPACE\",\"rector_config\":\"$RECTOR_CONFIG\"}"
+
+# ─── Rector Transform ─────────────────────────────────────────────────────────
+
+emit "rector.started" "{}"
+
+RECTOR_EXIT=0
+RECTOR_OUTPUT=$(/upgrader/vendor/bin/rector process \
+    --config="$RECTOR_CONFIG" \
+    --output-format=json \
+    --no-interaction \
+    "$WORKSPACE" 2>/dev/null) || RECTOR_EXIT=$?
+
+emit "rector.completed" "$RECTOR_OUTPUT"
+
+if [ "$RECTOR_EXIT" -ne 0 ]; then
+    fail "rector" "$RECTOR_EXIT"
+fi
+
+# ─── PHP Lint (syntax check) ─────────────────────────────────────────────────
+
+emit "php_lint.started" "{}"
+
+LINT_EXIT=0
+LINT_OUTPUT=$(find "$WORKSPACE" -name "*.php" -not -path "*/vendor/*" \
+    -exec php -l {} \; 2>&1) || LINT_EXIT=$?
+
+emit "php_lint.completed" "$(echo "$LINT_OUTPUT" | jq -Rs '{"output": .}')"
+
+if [ "$LINT_EXIT" -ne 0 ]; then
+    fail "php_lint" "$LINT_EXIT"
+fi
+
+# ─── PHPStan Verification ─────────────────────────────────────────────────────
+
+emit "phpstan.started" "{}"
+
+PHPSTAN_EXIT=0
+PHPSTAN_OUTPUT=$(/upgrader/vendor/bin/phpstan analyse \
+    --configuration=/upgrader/phpstan.neon \
+    --error-format=json \
+    --no-interaction \
+    "$WORKSPACE" 2>/dev/null) || PHPSTAN_EXIT=$?
+
+emit "phpstan.completed" "$PHPSTAN_OUTPUT"
+
+if [ "$PHPSTAN_EXIT" -ne 0 ]; then
+    # PHPStan errors are REVIEW severity, not a hard failure
+    emit "phpstan.issues_found" "{\"severity\":\"review\"}"
+fi
+
+# ─── Done ─────────────────────────────────────────────────────────────────────
+
+emit "hop.completed" "{\"status\":\"success\"}"
+exit 0
