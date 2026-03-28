@@ -58,5 +58,5 @@ return $config
         RateLimiterMigrationAuditor::class,
     ], $packageRules))
 
-    ->withParallel()
+    ->withoutParallel()
     ->withImportNames(importDocBlockNames: false);

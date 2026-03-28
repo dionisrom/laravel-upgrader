@@ -175,7 +175,7 @@ final class StaticArtisanVerifier implements VerifierInterface
             /** @var list<string> */
             public array $found = [];
 
-            public function enterNode(Node $node): null
+            public function enterNode(Node $node)
             {
                 // Match Foo\Bar\Controller::class
                 if ($node instanceof Node\Expr\ClassConstFetch
@@ -266,7 +266,7 @@ final class StaticArtisanVerifier implements VerifierInterface
             /** @var list<string> */
             public array $found = [];
 
-            public function enterNode(Node $node): null
+            public function enterNode(Node $node)
             {
                 if (!($node instanceof Node\Expr\ArrayItem)) {
                     return null;

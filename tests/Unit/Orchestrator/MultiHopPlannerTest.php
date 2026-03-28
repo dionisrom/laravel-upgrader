@@ -138,13 +138,24 @@ final class MultiHopPlannerTest extends TestCase
     // Hop types
     // -------------------------------------------------------------------------
 
-    public function testAllHopsHaveLaravelTypeAndNullPhpBase(): void
+    public function testAllHopsHaveLaravelTypeAndNullPhpBaseByDefault(): void
     {
         $sequence = $this->planner->plan('8', '13');
 
         foreach ($sequence->hops as $hop) {
             self::assertSame('laravel', $hop->type);
             self::assertNull($hop->phpBase);
+        }
+    }
+
+    public function testAllHopsUseSelectedPhpBaseWhenConstraintRequiresIt(): void
+    {
+        $planner = new MultiHopPlanner(phpConstraint: '^8.3');
+        $sequence = $planner->plan('10', '13');
+
+        foreach ($sequence->hops as $hop) {
+            self::assertSame('8.3', $hop->phpBase);
+            self::assertStringEndsWith(':php8.3', $hop->dockerImage);
         }
     }
 

@@ -1,0 +1,1089 @@
+{
+    "schema_version": "1",
+    "run_id": "lumen-69c81dd1222ee0.71189456",
+    "repo": {
+        "name": "oneportal/marketplace-gateway",
+        "sha": "816fc349d3fa"
+    },
+    "upgrade": {
+        "from": "8",
+        "to": "9",
+        "timestamp": "2026-03-28T18:28:33+00:00",
+        "host_version": "lumen-migrator"
+    },
+    "confidence": {
+        "score": 96,
+        "label": "High"
+    },
+    "summary": {
+        "total_files_scanned": 223,
+        "files_changed": 200,
+        "auto_fixed": 195,
+        "manual_review_required": 5,
+        "dependency_blockers": 0,
+        "phpstan_regressions": 0,
+        "syntax_errors": false
+    },
+    "manual_review_items": [
+        {
+            "id": "LUMEN-01",
+            "reason": "Handler method 'handleClientException' has no direct Laravel 9 equivalent — manual review required.",
+            "files": [
+                "app/Exceptions/Handler.php"
+            ],
+            "severity": "medium"
+        },
+        {
+            "id": "LUMEN-02",
+            "reason": "Handler method 'throwException' has no direct Laravel 9 equivalent — manual review required.",
+            "files": [
+                "app/Exceptions/Handler.php"
+            ],
+            "severity": "medium"
+        },
+        {
+            "id": "LUMEN-03",
+            "reason": "Handler method 'getLogMessage' has no direct Laravel 9 equivalent — manual review required.",
+            "files": [
+                "app/Exceptions/Handler.php"
+            ],
+            "severity": "medium"
+        },
+        {
+            "id": "LUMEN-04",
+            "reason": "Handler method 'parseErrorResponse' has no direct Laravel 9 equivalent — manual review required.",
+            "files": [
+                "app/Exceptions/Handler.php"
+            ],
+            "severity": "medium"
+        },
+        {
+            "id": "LUMEN-05",
+            "reason": "withEloquent() was not called in bootstrap/app.php — Eloquent may be disabled in the migrated app",
+            "files": [
+                "bootstrap/app.php"
+            ],
+            "severity": "medium"
+        }
+    ],
+    "dependency_blockers": [],
+    "verification_results": [
+        {
+            "step": "SyntaxVerifier",
+            "passed": true,
+            "issue_count": 0
+        },
+        {
+            "step": "StaticArtisanVerifier",
+            "passed": true,
+            "issue_count": 0
+        },
+        {
+            "step": "PhpStanVerifier",
+            "passed": true,
+            "issue_count": 0
+        }
+    ],
+    "file_scores": [
+        {
+            "file": "bootstrap/lumen-app-original.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".env.dev",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".env.pipeline",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".env.preprod",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".env.prod",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".env.staging",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".gitattributes",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".gitignore",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": ".gitlab-ci.yml",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Console/Commands/.gitkeep",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Console/Kernel.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Events/Event.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Events/ExampleEvent.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/AssetController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/BundleHistoryController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/BundleInfoController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/BundleMappingController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/CatalogDeliveryController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/CompleteTransactionController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/ContentGroupController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/CreateInitialJoinPurchaseTransactionController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/CreatePurchaseTransactionController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Exceptions/ApplicationException.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Exceptions/ErrorMessage.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Exceptions/InputException.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Exceptions/NotFoundException.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/GetStorefrontController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/ListAllStoreController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/ListAllStorefrontController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/MapTransactionWithSessionController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/MemberProfileController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/PricePackageController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/PromoCodeController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/PurchaseCatalogController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/PurchaseController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/PurchaseLibraryController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/RetentionOfferController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/StoreSettingsController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/TagController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/PurchaseCatalogV3ObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/PurchaseLibraryObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/PurchaseLibraryV2ObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/PurchaseLibraryV4ObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/RetentionOffersObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/RetentionOffersObjectTransformerInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/RevokeAccessObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/StoreSettingsObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/AssetTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/BundleTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/BundleTransformerV3.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/ChildrenBundlesTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/ContentGroupTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/InitialJoinBundleTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/InitialJoinBundleTransformerV4.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/InitialJoinBundleTransformerV5.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/ParentBundleTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/PurchaseCatalogForInitialJoinObjectTransformerHelper.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerHelper/SingleBundleTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerInterfaceInitialJoin.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TransformerInterfaceV4.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TrendingOffersObjectTransformer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/Transformers/TrendingOffersObjectTransformerInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Controllers/TrendingOfferController.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Helpers/Helpers.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Middleware/Authenticate.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Middleware/SentryMiddleware.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Jobs/ExampleJob.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Jobs/Job.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Listeners/ExampleListener.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/AppServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/AuthServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/CatalogDeliveryClientServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/CircuitBreakerServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/EventServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/LoggerServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/MemberProfileClientServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/POneAdminClientServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/PurchaseApiServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/SentryServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/ServiceApiInterfaceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Providers/TransformersServiceProvider.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Sentry/GuzzleClientFactory.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "artisan",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "CHANGELOG.md",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/CircuitBreakerExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/AdminService/AdminServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/AssetService/AssetsServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/AssetService/GetAssetsInput.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/BundleMappingService/BundleMappingServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/CatalogDeliveryServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetBundlesInput.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetBundleV3Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetInitialJoinCatalogV5Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetInitialJoinCatalogV6Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetPreCheckBundleInput.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetPurchaseCatalogV4Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetPurchaseLibraryV3Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetPurchaseLibraryV4Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/CatalogDeliveryService/GetStoreSettingsV3Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/HistoryService/GetBundleAddonHistoriesInput.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/HistoryService/HistoryServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/MemberOfferCheckService/GetMemberOfferCheckInput.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/MemberOfferCheckService/MemberOfferCheckServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/MemberProfileService/GetMemberInput.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/MemberProfileService/GetMemberProfileV4Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/MemberProfileService/MemberProfileServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/PromotionsService/GetRetentionOffersV2Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/PromotionsService/GetRetentionOffersV3Input.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/PromotionsService/PromotionsServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Domain/Services/PurchaseService/PurchaseServiceInterface.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/LoggerFormatter/TypedJsonFormatter.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Phystrix/PhystrixAbstractCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Phystrix/PhystrixApcStateStorage.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Phystrix/PhystrixConfig.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AdminService/AdminService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AdminService/Command/GetStorefrontCampaignsV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AdminService/Command/GetStorefrontCampaignV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AdminService/Command/GetStoresV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AdminService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AssetsService/AssetsService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AssetsService/Command/GetAssetsV1Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/AssetsService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/BundleMappingService/BundleMappingService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/BundleMappingService/Command/GetMapBundleCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/BundleMappingService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/CatalogDeliveryService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetBundlesV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetBundleV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetContentGroupsV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetContentGroupV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetInitialJoinCatalogV5Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetInitialJoinCatalogV6Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetPreCheckBundleCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetPricePackagesV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetPurchaseCatalogV4Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetPurchaseLibraryV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetPurchaseLibraryV4Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetSingleBundleV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetStoreSettingsV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/Command/GetTagsV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/CatalogDeliveryService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/HistoryService/Command/GetBundleAddonHistoriesCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/HistoryService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/HistoryService/HistoryService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberOfferCheckService/Command/GetMemberOfferCheckCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberOfferCheckService/Command/PatchMemberOfferCheckCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberOfferCheckService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberOfferCheckService/MemberOfferCheckService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberProfileService/Command/GetMemberCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberProfileService/Command/GetMemberProfileV4Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberProfileService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/MemberProfileService/MemberProfileService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PromotionsService/Command/GetRetentionOffersV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PromotionsService/Command/GetRetentionOffersV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PromotionsService/Command/GetTrendingOffersV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PromotionsService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PromotionsService/PromotionsService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PatchPurchaseMapCommand.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PatchPurchaseResponseV2Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PostInitialJoinPurchaseV4Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PostPromoCodeValidationForInitialJoinV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PostPromoCodeValidationForInitialJoinV4Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PostPromoCodeValidationV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/Command/PostPurchaseV3Command.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/DefaultExceptionAnalyzer.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "core/Infrastructure/Services/PurchaseService/PurchaseService.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "database/factories/ModelFactory.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "database/migrations/.gitkeep",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "database/seeds/DatabaseSeeder.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "docker/.env.dev",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "docker/.gitignore",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "docker/docker-compose.override.dev.yml",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "docker/docker-compose.yml",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "docs/swagger.yml",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "Makefile",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "phpunit.xml",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "public/.htaccess",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "public/index.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "resources/views/.gitkeep",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "resources/views/vendor/swagger-lume/index.blade.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Helpers.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/ListAllStoreControllerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/BundleMappingObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/BundleObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/CreatePurchaseObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/MemberProfileObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/PurchaseCatalogForInitialJoinObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/PurchaseCatalogV1ObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/app/Http/Controllers/Transformers/PurchaseCatalogV2ObjectTransformerTest.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/Integration/IntegrationTestCase.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "tests/TestCase.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "routes/web.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "config/app.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Http/Kernel.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "app/Exceptions/Handler.php",
+            "score": 40,
+            "label": "Low"
+        },
+        {
+            "file": "config/logger.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "config/sentry.php",
+            "score": 100,
+            "label": "High"
+        },
+        {
+            "file": "config/swagger-lume.php",
+            "score": 100,
+            "label": "High"
+        }
+    ]
+}

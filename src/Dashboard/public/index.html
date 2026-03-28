@@ -100,6 +100,22 @@
 
     <!-- Breaking changes -->
     <section class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h2 class="text-gray-300 font-semibold mb-3 text-xs uppercase tracking-wider">Report Artifacts</h2>
+      <div id="report-links" class="flex flex-col gap-2 text-xs">
+        <div id="report-empty" class="text-gray-600">Waiting for report artifacts…</div>
+      </div>
+    </section>
+
+    <section class="bg-gray-800 rounded-lg p-4 border border-gray-700">
+      <h2 class="text-gray-300 font-semibold mb-3 text-xs uppercase tracking-wider">Changed Files</h2>
+      <div class="max-h-56 overflow-y-auto rounded border border-gray-700 bg-gray-900/60">
+        <ul id="changed-files-list" class="divide-y divide-gray-800 text-xs">
+          <li id="changed-files-empty" class="px-3 py-2 text-gray-600">No changed files yet</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="bg-gray-800 rounded-lg p-4 border border-gray-700">
       <h2 class="text-gray-300 font-semibold mb-3 text-xs uppercase tracking-wider">Breaking Changes</h2>
       <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -134,6 +150,17 @@ const MAX_LOG = 100;
 let retryDelay = 1000;
 const maxDelay = 30000;
 let counters = { files: 0, warnings: 0, errors: 0, manual: 0 };
+let changedFiles = new Set();
+let breakingChanges = new Map();
+const STAGE_LABELS = {
+  inventory: 'Inventory',
+  rector: 'Rector',
+  composer: 'Composer',
+  config: 'Config',
+  lumen: 'Lumen',
+  verify: 'Verify',
+  report: 'Report',
+};
 
 // ============================================================
 // DOM helpers
@@ -190,9 +217,70 @@ function initStages() {
     const li = document.createElement('li');
     li.id = 'stage-' + s;
     li.className = 'flex items-center gap-2 py-0.5 px-2 rounded ' + colorFor('pending');
-    li.innerHTML = `<span class="icon">${iconFor('pending')}</span><span class="capitalize">${s}</span>`;
+    li.innerHTML = `<span class="icon">${iconFor('pending')}</span><span>${STAGE_LABELS[s] || s}</span>`;
     ul.appendChild(li);
   });
+}
+
+function normalizeStage(stage, eventType = '') {
+  const raw = String(stage || '').trim();
+  const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+  const direct = {
+    inventory: 'inventory',
+    inventoryscanner: 'inventory',
+    breakingchangeregistry: 'inventory',
+    rector: 'rector',
+    rectorrunner: 'rector',
+    composer: 'composer',
+    dependencyupgrader: 'composer',
+    composer_started: 'composer',
+    composer_install_started: 'composer',
+    composer_install_failed: 'composer',
+    config: 'config',
+    configmigrator: 'config',
+    lumen: 'lumen',
+    lumenmigrator: 'lumen',
+    slim_skeleton: 'lumen',
+    slimskeletongenerator: 'lumen',
+    verify: 'verify',
+    verification: 'verify',
+    verification_result: 'verify',
+    phpstan: 'verify',
+    syntax: 'verify',
+    class_resolution: 'verify',
+    static_artisan: 'verify',
+    report: 'report',
+    reportbuilder: 'report',
+  };
+
+  if (direct[normalized]) return direct[normalized];
+
+  if (normalized.includes('inventory') || normalized.includes('breakingchange')) return 'inventory';
+  if (normalized.includes('rector')) return 'rector';
+  if (normalized.includes('composer') || normalized.includes('dependency')) return 'composer';
+  if (normalized.includes('config')) return 'config';
+  if (normalized.includes('lumen') || normalized.includes('slim_skeleton')) return 'lumen';
+  if (normalized.includes('verify') || normalized.includes('verification') || normalized.includes('phpstan') || normalized.includes('syntax') || normalized.includes('class_resolution')) return 'verify';
+  if (normalized.includes('report')) return 'report';
+
+  if (eventType === 'hop_complete' || eventType === 'pipeline_complete' || eventType === 'hop_dry_run' || eventType === 'chain_hop_complete') {
+    return 'report';
+  }
+
+  return null;
+}
+
+function ensureStageRunning(stage) {
+  if (!stage || !STAGES.includes(stage)) return;
+  if (stageStatus[stage] === 'pending') setStageStatus(stage, 'running');
+}
+
+function markReportComplete() {
+  const reportStage = normalizeStage('', 'hop_complete');
+  if (!reportStage) return;
+  if (stageStatus.report === 'pending') setStageStatus(reportStage, 'running');
+  if (stageStatus.report !== 'failed') setStageStatus(reportStage, 'done');
 }
 
 function setStageStatus(stage, status) {
@@ -250,23 +338,137 @@ function escHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
+function normalizeFilePath(file) {
+  let normalized = String(file || '').replaceAll('\\', '/').trim();
+  ['../repo/', '/repo/', 'repo/'].forEach(prefix => {
+    if (normalized.startsWith(prefix)) normalized = normalized.slice(prefix.length);
+  });
+  return normalized.replace(/^\/+/, '');
+}
+
+function syncCounter(key, value) {
+  counters[key] = Math.max(counters[key], value);
+  const map = { files: 'cnt-files', warnings: 'cnt-warnings', errors: 'cnt-errors', manual: 'cnt-manual' };
+  const el = $(map[key]);
+  if (el) el.textContent = String(counters[key]);
+}
+
+function resetReportLinks() {
+  const container = $('report-links');
+  container.innerHTML = '<div id="report-empty" class="text-gray-600">Waiting for report artifacts…</div>';
+}
+
+function renderReportLinks(artifacts = {}) {
+  const container = $('report-links');
+  const links = [];
+
+  if (artifacts.html?.url) {
+    links.push(`<a class="text-blue-400 hover:text-blue-300 underline underline-offset-2" href="${escHtml(artifacts.html.url)}" target="_blank" rel="noopener noreferrer">Open diff viewer</a>`);
+  }
+  if (artifacts.json?.url) {
+    links.push(`<a class="text-blue-400 hover:text-blue-300 underline underline-offset-2" href="${escHtml(artifacts.json.url)}" target="_blank" rel="noopener noreferrer">Open JSON summary</a>`);
+  }
+  if (artifacts.manual?.url) {
+    links.push(`<a class="text-blue-400 hover:text-blue-300 underline underline-offset-2" href="${escHtml(artifacts.manual.url)}" target="_blank" rel="noopener noreferrer">Open manual review notes</a>`);
+  }
+
+  container.innerHTML = links.length > 0
+    ? links.map(link => `<div>${link}</div>`).join('')
+    : '<div id="report-empty" class="text-gray-600">Waiting for report artifacts…</div>';
+}
+
+function renderChangedFiles() {
+  const list = $('changed-files-list');
+  const files = Array.from(changedFiles).sort((left, right) => left.localeCompare(right));
+
+  if (files.length === 0) {
+    list.innerHTML = '<li id="changed-files-empty" class="px-3 py-2 text-gray-600">No changed files yet</li>';
+    return;
+  }
+
+  list.innerHTML = files.map(file => `
+    <li class="px-3 py-2 text-gray-300 break-all">${escHtml(file)}</li>
+  `).join('');
+}
+
+function trackChangedFile(file) {
+  const normalized = normalizeFilePath(file);
+  if (!normalized) return;
+  changedFiles.add(normalized);
+  renderChangedFiles();
+}
+
+function renderBreakingChanges() {
+  const tbody = $('breaking-table');
+  const rows = Array.from(breakingChanges.values()).sort((left, right) => {
+    if (left.type !== right.type) return left.type === 'MANUAL' ? -1 : 1;
+    return left.rule.localeCompare(right.rule);
+  });
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr id="break-empty"><td colspan="3" class="text-gray-600 py-2 text-center">No changes yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(item => {
+    const badge = item.type === 'MANUAL'
+      ? '<span class="bg-orange-500 text-white text-xs px-1 rounded">MANUAL</span>'
+      : '<span class="bg-green-600 text-white text-xs px-1 rounded">AUTO</span>';
+
+    return `<tr class="border-b border-gray-700">
+      <td class="py-1 pr-2 text-gray-300 break-all">${escHtml(item.rule)}</td>
+      <td class="py-1 pr-2">${badge}</td>
+      <td class="py-1 text-right text-gray-400">${item.fileCount ?? '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function upsertBreakingChange(ruleId, type, files, explicitFileCount) {
+  const normalizedRule = String(ruleId || '—').trim() || '—';
+  const normalizedFiles = Array.from(new Set((files || []).map(normalizeFilePath).filter(Boolean))).sort();
+  const key = `${type}|${normalizedRule}`;
+  const existing = breakingChanges.get(key) || { rule: normalizedRule, type, files: [], fileCount: null };
+  const mergedFiles = Array.from(new Set([...existing.files, ...normalizedFiles])).sort();
+
+  breakingChanges.set(key, {
+    rule: normalizedRule,
+    type,
+    files: mergedFiles,
+    fileCount: Math.max(existing.fileCount || 0, explicitFileCount || 0, mergedFiles.length || 0),
+  });
+
+  renderBreakingChanges();
+}
+
+async function loadReportSummary() {
+  try {
+    const response = await fetch('/api/report', { cache: 'no-store' });
+    if (!response.ok) return;
+
+    const summary = await response.json();
+    renderReportLinks(summary.artifacts || {});
+
+    changedFiles = new Set((summary.changed_files || []).map(normalizeFilePath).filter(Boolean));
+    renderChangedFiles();
+
+    breakingChanges = new Map();
+    renderBreakingChanges();
+    (summary.breaking_changes || []).forEach(item => {
+      upsertBreakingChange(item.rule, item.type, item.files || [], item.file_count);
+    });
+
+    if (Number.isFinite(summary.total_files_changed)) syncCounter('files', summary.total_files_changed);
+    if (Number.isFinite(summary.total_manual_review_items)) syncCounter('manual', summary.total_manual_review_items);
+  } catch (_) {
+    // Keep the live dashboard usable even if the summary endpoint is temporarily unavailable.
+  }
+}
+
 // ============================================================
 // Breaking changes table
 // ============================================================
 function addBreakingChange(ruleId, type, files) {
-  const tbody = $('breaking-table');
-  const empty = $('break-empty');
-  if (empty) empty.remove();
-
-  const tr = document.createElement('tr');
-  tr.className = 'border-b border-gray-700';
-  const badge = type === 'MANUAL'
-    ? '<span class="bg-orange-500 text-white text-xs px-1 rounded">MANUAL</span>'
-    : '<span class="bg-green-600 text-white text-xs px-1 rounded">AUTO</span>';
-  tr.innerHTML = `<td class="py-1 pr-2 text-gray-300 break-all">${escHtml(ruleId)}</td>`
-    + `<td class="py-1 pr-2">${badge}</td>`
-    + `<td class="py-1 text-right text-gray-400">${files !== undefined ? files : '—'}</td>`;
-  tbody.appendChild(tr);
+  upsertBreakingChange(ruleId, type, [], files);
 }
 
 // ============================================================
@@ -285,6 +487,11 @@ function resetCounters() {
   $('cnt-warnings').textContent = '0';
   $('cnt-errors').textContent = '0';
   $('cnt-manual').textContent = '0';
+  changedFiles = new Set();
+  breakingChanges = new Map();
+  renderChangedFiles();
+  renderBreakingChanges();
+  resetReportLinks();
 }
 
 // ============================================================
@@ -305,7 +512,8 @@ function startElapsed() {
 function handleEvent(event) {
   const type = event.event || event.type || 'unknown';
   const data = event.data || event;
-  const summary = data.message || data.file || data.stage || data.rule || '';
+  const summary = data.message || data.error || data.file || data.stage || data.rule || data.id || data.step || '';
+  const stage = normalizeStage(data.stage || data.step, type);
 
   addLog(type, summary);
 
@@ -319,11 +527,11 @@ function handleEvent(event) {
       initStages();
       startElapsed();
       if (data.hop) $('hop-label').textContent = data.hop;
+      loadReportSummary();
       break;
 
     case 'stage_start': {
-      const stage = data.stage;
-      if (stage && STAGES.includes(stage)) setStageStatus(stage, 'running');
+      if (stage) setStageStatus(stage, 'running');
       if (stage === 'lumen') {
         $('lumen-section').classList.remove('hidden');
         $('lumen-status').textContent = 'Lumen migration started…';
@@ -332,46 +540,93 @@ function handleEvent(event) {
     }
 
     case 'stage_complete': {
-      const stage = data.stage;
-      if (stage && STAGES.includes(stage)) setStageStatus(stage, 'done');
+      if (stage) setStageStatus(stage, 'done');
       break;
     }
 
+    case 'stage_error':
     case 'pipeline_error': {
-      const stage = data.stage;
-      if (stage && STAGES.includes(stage)) setStageStatus(stage, 'failed');
+      if (stage) setStageStatus(stage, 'failed');
       incCounter('errors');
       break;
     }
 
     case 'file_changed':
+      ensureStageRunning('rector');
       incCounter('files');
+      trackChangedFile(data.file);
       break;
 
     case 'warning':
       incCounter('warnings');
       break;
 
+    case 'composer_started':
+    case 'composer_install_started':
+      setStageStatus('composer', 'running');
+      break;
+
+    case 'composer_install_failed':
+    case 'dependency_error':
+      setStageStatus('composer', 'failed');
+      incCounter('errors');
+      break;
+
+    case 'dependency_blocker':
+      ensureStageRunning('composer');
+      if ((data.severity || '').toLowerCase() === 'warning') incCounter('warnings');
+      break;
+
+    case 'verification_result':
+      ensureStageRunning('verify');
+      if (data.passed === false) {
+        setStageStatus('verify', 'failed');
+        incCounter('errors');
+      }
+      break;
+
     case 'breaking_change_applied':
-      addBreakingChange(data.rule || '—', 'AUTO', data.files_affected);
+      addBreakingChange(
+        data.id || data.rule || '—',
+        'AUTO',
+        data.file_count ?? data.files_affected ?? (Array.isArray(data.files) ? data.files.length : undefined),
+      );
       break;
 
     case 'manual_review_required':
-      addBreakingChange(data.rule || '—', 'MANUAL', data.files_affected);
+      upsertBreakingChange(
+        data.id || data.rule || '—',
+        'MANUAL',
+        Array.isArray(data.files) ? data.files : [],
+        data.file_count ?? data.files_affected ?? (Array.isArray(data.files) ? data.files.length : undefined),
+      );
       incCounter('manual');
+      (Array.isArray(data.files) ? data.files : []).forEach(trackChangedFile);
       break;
 
     case 'hop_complete': {
       STAGES.forEach(s => {
         if (stageStatus[s] === 'running') setStageStatus(s, 'done');
       });
+      markReportComplete();
       if (data.confidence !== undefined) {
         $('confidence-row').classList.remove('hidden');
         $('confidence-val').textContent = data.confidence + '%';
       }
+      if (Number.isFinite(data.files_changed)) syncCounter('files', Number(data.files_changed));
+      if (Number.isFinite(data.manual_review_count)) syncCounter('manual', Number(data.manual_review_count));
+      loadReportSummary();
       if (elapsedTimer) clearInterval(elapsedTimer);
       break;
     }
+
+    case 'pipeline_complete':
+    case 'hop_dry_run':
+    case 'chain_hop_complete':
+      markReportComplete();
+      loadReportSummary();
+      if (elapsedTimer && type === 'pipeline_complete') clearInterval(elapsedTimer);
+      break;
 
     case 'hop_skipped':
       addLog('info', 'Hop skipped: ' + (data.reason || ''));
@@ -416,6 +671,9 @@ function connect() {
 // ============================================================
 initStages();
 updateProgress();
+renderChangedFiles();
+renderBreakingChanges();
+loadReportSummary();
 connect();
 </script>
 </body>

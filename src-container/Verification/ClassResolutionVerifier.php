@@ -91,7 +91,7 @@ final class ClassResolutionVerifier implements VerifierInterface
             /** @var list<string> */
             public array $found = [];
 
-            public function enterNode(Node $node): null
+            public function enterNode(Node $node)
             {
                 // Regular use: use Foo\Bar;
                 if ($node instanceof Use_ && $node->type === Use_::TYPE_NORMAL) {

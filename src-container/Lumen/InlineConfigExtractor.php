@@ -184,7 +184,7 @@ final class ConfigureCallCollector extends NodeVisitorAbstract
     /** @var array<string, int> configName → source line number */
     public array $configLines = [];
 
-    public function leaveNode(Node $node): null
+    public function leaveNode(Node $node)
     {
         if (!($node instanceof MethodCall)) {
             return null;

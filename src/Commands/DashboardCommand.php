@@ -25,6 +25,7 @@ final class DashboardCommand extends Command
     {
         $this
             ->addOption('port',       null, InputOption::VALUE_OPTIONAL, 'Dashboard port', '8765')
+            ->addOption('log',        null, InputOption::VALUE_OPTIONAL, 'Path to audit JSON-ND log file')
             ->addOption('no-browser', null, InputOption::VALUE_NONE,     'Do not auto-open browser');
     }
 
@@ -36,10 +37,12 @@ final class DashboardCommand extends Command
             return Command::INVALID;
         }
         $port      = (int) $portValue;
+        $logPathValue = $input->getOption('log');
+        $logPath = is_string($logPathValue) && $logPathValue !== '' ? $logPathValue : null;
         $noBrowser = (bool) $input->getOption('no-browser');
 
         $eventBus = new EventBus();
-        $server   = new ReactDashboardServer($eventBus, $port);
+        $server   = new ReactDashboardServer($eventBus, $port, '127.0.0.1', __DIR__ . '/../Dashboard/public', $logPath);
 
         if (!$noBrowser) {
             $server->openBrowser();

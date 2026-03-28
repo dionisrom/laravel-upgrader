@@ -79,6 +79,25 @@ PHP);
         self::assertStringContainsString('lumen_feature_disabled', $output);
     }
 
+    public function testCommentedOutEloquentCallIsIgnored(): void
+    {
+        file_put_contents($this->workspace . '/bootstrap/app.php', <<<'PHP'
+<?php
+$app = new Laravel\Lumen\Application(dirname(__DIR__));
+// $app->withEloquent();
+PHP);
+
+        $detector = new EloquentBootstrapDetector();
+        ob_start();
+        $result = $detector->detect($this->workspace);
+        $output = (string) ob_get_clean();
+
+        self::assertFalse($result->eloquentEnabled);
+        self::assertFalse($result->databaseConfigExists);
+        self::assertStringContainsString('lumen_feature_disabled', $output);
+        self::assertStringNotContainsString('lumen_manual_review', $output);
+    }
+
     private function removeDir(string $dir): void
     {
         if (!is_dir($dir)) {

@@ -76,6 +76,26 @@ PHP);
         self::assertFalse($result->eloquentEnabled);
     }
 
+    public function testCommentedOutFacadeAndEloquentCallsAreIgnored(): void
+    {
+        file_put_contents($this->workspace . '/bootstrap/app.php', <<<'PHP'
+<?php
+$app = new Laravel\Lumen\Application(dirname(__DIR__));
+// $app->withFacades();
+// $app->withEloquent();
+PHP);
+
+        $migrator = new FacadeBootstrapMigrator();
+        ob_start();
+        $result = $migrator->migrate($this->workspace);
+        $output = (string) ob_get_clean();
+
+        self::assertFalse($result->facadesEnabled);
+        self::assertFalse($result->eloquentEnabled);
+        self::assertStringContainsString('lumen_feature_disabled', $output);
+        self::assertStringContainsString('"feature":"facades"', str_replace(' ', '', $output));
+    }
+
     private function removeDir(string $dir): void
     {
         if (!is_dir($dir)) {

@@ -50,5 +50,5 @@ return $config
     // ── Custom gap-fill rules (package rules only — L12 has minimal breaking changes) ──
     ->withRules($packageRules)
 
-    ->withParallel()
+    ->withoutParallel()
     ->withImportNames(importDocBlockNames: false);

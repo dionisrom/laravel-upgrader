@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
+use App\Composer\FrameworkDetector;
 use App\Composer\LaravelVersionDetector;
+use App\Composer\PhpConstraintDetector;
 use App\Dashboard\EventBus;
 use App\Dashboard\ReactDashboardServer;
 use App\Orchestrator\AuditLogWriter;
@@ -22,6 +24,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Process\Process;
 
 final class RunCommand extends Command
 {
@@ -152,12 +155,9 @@ final class RunCommand extends Command
         $streamer->addConsumer(new AuditLogWriter($logPath, uniqid('run-', true), $repoSha, $this->getApplication()?->getVersion() ?? 'unknown'));
 
         // 8. Start dashboard if not disabled
-        $dashboardServer = null;
+        $dashboardProcess = null;
         if (!$noDashboard) {
-            $eventBus = new EventBus();
-            $dashboardServer = new ReactDashboardServer($eventBus, $port);
-            $streamer->addConsumer($eventBus);
-            $dashboardServer->openBrowser();
+            $dashboardProcess = $this->startDashboardServer($logPath, $port, $safeOutput);
         }
 
         // 9. Fetch repository
@@ -177,6 +177,23 @@ final class RunCommand extends Command
             return Command::FAILURE;
         }
 
+        $frameworkDetector = new FrameworkDetector();
+        $framework = $frameworkDetector->detect($fetchResult->workspacePath);
+        if ($framework === 'lumen_ambiguous') {
+            $safeOutput->writeln('<error>Detected ambiguous Lumen markers in composer.json or bootstrap/app.php. The upgrader cannot safely choose the Laravel hop path for this repository. Aborting.</error>');
+            return Command::FAILURE;
+        }
+
+        if ($framework === 'lumen') {
+            $safeOutput->writeln('<info>Detected a Lumen application. Routing to the dedicated Lumen migration pipeline.</info>');
+        }
+
+        $phpConstraintDetector = new PhpConstraintDetector();
+        $phpConstraint = $phpConstraintDetector->detect($fetchResult->workspacePath);
+        if ($phpConstraint !== null) {
+            $safeOutput->writeln(sprintf('<info>Detected PHP requirement from composer.json: %s</info>', $phpConstraint));
+        }
+
         // 9b. Auto-detect --from version if not provided
         if ($from === null) {
             $detector = new LaravelVersionDetector();
@@ -193,7 +210,13 @@ final class RunCommand extends Command
         $workspaceManager = new WorkspaceManager();
         $checkpoints = $resume ? new TransformCheckpoint($fetchResult->workspacePath) : null;
         $orchestrator = new UpgradeOrchestrator(
-            new HopPlanner(),
+            $framework === 'lumen'
+                ? new HopPlanner(
+                    hopImages: ['8:9' => 'upgrader/lumen-migrator'],
+                    phpConstraint: $phpConstraint,
+                    frameworkType: 'lumen',
+                )
+                : new HopPlanner(phpConstraint: $phpConstraint),
             new DockerRunner(),
             $workspaceManager,
             $streamer,
@@ -214,6 +237,8 @@ final class RunCommand extends Command
             return Command::FAILURE;
         }
 
+        $this->copyReportArtifacts($fetchResult->workspacePath, $outputDir);
+
         $safeOutput->writeln(sprintf('<info>Upgrade complete. Output written to %s/</info>', rtrim($outputDir, '/')));
 
         return Command::SUCCESS;
@@ -226,5 +251,101 @@ final class RunCommand extends Command
         }
 
         return (string) fgets(STDIN);
+    }
+
+    private function startDashboardServer(string $logPath, int $port, OutputInterface $output): ?Process
+    {
+        $binPath = dirname(__DIR__, 2) . '/bin/upgrader';
+
+        if (!is_file($binPath)) {
+            $output->writeln('<comment>Dashboard disabled: launcher script not found.</comment>');
+            return null;
+        }
+
+        $process = new Process([
+            PHP_BINARY,
+            $binPath,
+            'dashboard',
+            '--port',
+            (string) $port,
+            '--log',
+            $logPath,
+            '--no-browser',
+        ], dirname(__DIR__, 2));
+
+        $process->disableOutput();
+
+        try {
+            $process->start();
+            $this->waitForDashboardReady('127.0.0.1', $port, 5.0);
+            (new ReactDashboardServer(new EventBus(), $port))->openBrowser();
+
+            return $process;
+        } catch (\Throwable $e) {
+            $output->writeln(sprintf(
+                '<comment>Dashboard failed to start: %s</comment>',
+                $this->redactor->redact($e->getMessage()),
+            ));
+
+            return null;
+        }
+    }
+
+    private function waitForDashboardReady(string $host, int $port, float $timeoutSeconds): void
+    {
+        $deadline = microtime(true) + $timeoutSeconds;
+
+        do {
+            $socket = @fsockopen($host, $port, $errno, $errstr, 0.25);
+            if (is_resource($socket)) {
+                fclose($socket);
+                return;
+            }
+
+            usleep(100000);
+        } while (microtime(true) < $deadline);
+    }
+
+    private function copyReportArtifacts(string $workspacePath, string $outputDir): void
+    {
+        foreach ($this->discoverReportArtifacts($workspacePath) as $filename => $sourcePath) {
+            $destinationPath = rtrim($outputDir, '/\\') . DIRECTORY_SEPARATOR . $filename;
+            @copy($sourcePath, $destinationPath);
+        }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function discoverReportArtifacts(string $workspacePath): array
+    {
+        $artifacts = [];
+        $candidateRoots = [
+            rtrim($workspacePath, '/\\') . DIRECTORY_SEPARATOR . '.upgrader',
+            rtrim($workspacePath, '/\\'),
+        ];
+        $filenames = [
+            'chain-report.html',
+            'chain-report.json',
+            'report.html',
+            'report.json',
+            'manual-review.md',
+            'audit.log.json',
+        ];
+
+        foreach ($candidateRoots as $root) {
+            foreach ($filenames as $filename) {
+                if (isset($artifacts[$filename])) {
+                    continue;
+                }
+
+                $path = $root . DIRECTORY_SEPARATOR . $filename;
+                if (is_file($path)) {
+                    $artifacts[$filename] = $path;
+                }
+            }
+        }
+
+        return $artifacts;
     }
 }

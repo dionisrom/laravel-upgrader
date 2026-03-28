@@ -61,33 +61,6 @@ emit_container_resource_usage() {
     emit "{\"event\":\"container_resource_usage\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"memory_peak_bytes\":${peak_bytes},\"memory_limit_bytes\":${limit_bytes},\"source\":\"cgroup\"}"
 }
 
-run_stage() {
-    local stage="$1"
-    local script="$2"
-    shift 2
-    local extra_args=("$@")
-
-    local start_ts
-    start_ts="$(ts)"
-    local start_seconds=$SECONDS
-
-    emit "{\"event\":\"stage_start\",\"stage\":\"${stage}\",\"hop\":\"${HOP}\",\"ts\":${start_ts}}"
-
-    local exit_code=0
-    "${PHP_BIN}" "${SRC}/${script}" "${WORKSPACE}" "${extra_args[@]+"${extra_args[@]}"}" >&2 2>&1 || exit_code=$?
-
-    local end_ts
-    end_ts="$(ts)"
-    local duration_ms=$(( (SECONDS - start_seconds) * 1000 ))
-
-    if [ "$exit_code" -eq 0 ]; then
-        emit "{\"event\":\"stage_complete\",\"stage\":\"${stage}\",\"hop\":\"${HOP}\",\"ts\":${end_ts},\"duration_ms\":${duration_ms}}"
-    else
-        emit "{\"event\":\"stage_error\",\"stage\":\"${stage}\",\"hop\":\"${HOP}\",\"ts\":${end_ts},\"error\":\"Script exited with code ${exit_code}\"}"
-        exit 1
-    fi
-}
-
 # ─── Pre-flight checks ────────────────────────────────────────────────────────
 
 if [ ! -d "${WORKSPACE}" ]; then
@@ -95,34 +68,18 @@ if [ ! -d "${WORKSPACE}" ]; then
     exit 2
 fi
 
+# Mark the workspace as a safe directory for git — the bind-mounted volume is
+# typically owned by a different UID (host user) than the container user.
+git config --global --add safe.directory "${WORKSPACE}" 2>/dev/null || true
+
 # ─── Pipeline start ───────────────────────────────────────────────────────────
 
 emit "{\"event\":\"pipeline_start\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"workspace\":\"${WORKSPACE}\"}"
 
-# ─── Stage 1: LumenDetector ───────────────────────────────────────────────────
-
-run_stage "LumenDetector" "Lumen/LumenDetector.php"
-
-# ─── Stage 2: FacadeBootstrapMigrator ─────────────────────────────────────────
-
-run_stage "FacadeBootstrapMigrator" "Lumen/FacadeBootstrapMigrator.php"
-
-# ─── Stage 3: ExceptionHandlerMigrator ────────────────────────────────────────
-
-run_stage "ExceptionHandlerMigrator" "Lumen/ExceptionHandlerMigrator.php"
-
-# ─── Stage 4: ConfigMigrator (Lumen inline configs) ──────────────────────────
-
-run_stage "ConfigMigrator" "Config/ConfigMigrator.php" "--lumen-mode"
-
-# ─── Stage 5: VerificationPipeline ────────────────────────────────────────────
-
-run_stage "VerificationPipeline" "Verification/VerificationPipeline.php"
-
-# ─── Stage 6: ReportBuilder ───────────────────────────────────────────────────
-
-run_stage "ReportBuilder" "Report/ReportBuilder.php" \
-    "--assets=/upgrader/assets"
+if ! "${PHP_BIN}" "${SRC}/Lumen/LumenMigrationPipeline.php" "${WORKSPACE}" >&2 2>&1; then
+    emit "{\"event\":\"stage_error\",\"stage\":\"LumenMigrationPipeline\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"error\":\"Pipeline runner exited with a non-zero status\"}"
+    exit 1
+fi
 
 # ─── Pipeline complete ────────────────────────────────────────────────────────
 

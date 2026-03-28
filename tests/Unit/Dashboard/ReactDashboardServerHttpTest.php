@@ -79,6 +79,42 @@ final class ReactDashboardServerHttpTest extends TestCase
         self::assertSame(0, $body['clients']);
     }
 
+    public function testApiReportReturnsNormalizedSummaryFromOutputArtifacts(): void
+    {
+        $baseDir = sys_get_temp_dir() . '/dashboard-api-' . uniqid('', true);
+        mkdir($baseDir, 0755, true);
+        file_put_contents($baseDir . '/audit.jsonnd', json_encode([
+            'event' => 'breaking_change_applied',
+            'id' => 'BC-123',
+            'file_count' => 2,
+        ]) . "\n");
+        file_put_contents($baseDir . '/report.html', '<html>report</html>');
+        file_put_contents($baseDir . '/report.json', json_encode([
+            'summary' => ['files_changed' => 2],
+            'manual_review_items' => [
+                ['id' => 'MR-001', 'files' => ['app/Http/Kernel.php']],
+            ],
+            'file_scores' => [
+                ['file' => 'app/Http/Kernel.php'],
+                ['file' => '../repo/config/app.php'],
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        $server = new ReactDashboardServer(new EventBus(), 8765, '127.0.0.1', dirname(__DIR__, 3) . '/src/Dashboard/public', $baseDir . '/audit.jsonnd');
+        $response = $this->invokeHandleRequest($server, '/api/report');
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('application/json', $response->getHeaderLine('Content-Type'));
+
+        $body = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        self::assertTrue($body['available']);
+        self::assertSame('/artifacts/report.html', $body['artifacts']['html']['url']);
+        self::assertSame(['app/Http/Kernel.php', 'config/app.php'], $body['changed_files']);
+        self::assertSame(2, $body['total_files_changed']);
+        self::assertContains('MR-001', array_column($body['breaking_changes'], 'rule'));
+        self::assertContains('BC-123', array_column($body['breaking_changes'], 'rule'));
+    }
+
     public function testUnknownRouteReturns404(): void
     {
         $server = $this->makeServer();

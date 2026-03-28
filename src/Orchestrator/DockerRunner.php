@@ -50,6 +50,18 @@ final class DockerRunner
             '--env', 'UPGRADER_WORKSPACE=/repo',
         ];
 
+        if ($options?->extraComposerCacheDir !== null) {
+            $cmd[] = '-v';
+            $cmd[] = "{$options->extraComposerCacheDir}:/composer-cache:rw";
+            $cmd[] = '--env';
+            $cmd[] = 'UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache';
+        }
+
+        if ($options?->skipDependencyUpgrader) {
+            $cmd[] = '--env';
+            $cmd[] = 'UPGRADER_SKIP_DEPENDENCY_UPGRADER=1';
+        }
+
         if ($options?->skipPhpstan) {
             $cmd[] = '--env';
             $cmd[] = 'UPGRADER_SKIP_PHPSTAN=1';
@@ -63,6 +75,151 @@ final class DockerRunner
         $cmd[] = $hop->dockerImage;
 
         return $cmd;
+    }
+
+    /**
+     * Builds the separate network-enabled Docker command used to warm a
+     * Composer cache for private VCS repositories before the isolated hop runs.
+     *
+     * @return list<string>
+     */
+    public function buildPrimerCommand(Hop $hop, string $workspacePath, string $composerCacheDir): array
+    {
+        return [
+            $this->dockerBin,
+            'run', '--rm',
+            '-v', "{$workspacePath}:/repo:rw",
+            '-v', "{$composerCacheDir}:/composer-cache:rw",
+            '--env', 'UPGRADER_WORKSPACE=/repo',
+            '--env', 'COMPOSER_CACHE_DIR=/composer-cache',
+            '--entrypoint', 'php',
+            $hop->dockerImage,
+            '/upgrader/src/Composer/RepositoryCachePrimer.php',
+            '/repo',
+        ];
+    }
+
+    /**
+     * Builds the separate network-enabled Docker command used to resolve
+     * dependencies before the isolated hop container runs.
+     *
+     * @return list<string>
+     */
+    public function buildDependencyPreStageCommand(Hop $hop, string $workspacePath, ?UpgradeOptions $options = null): array
+    {
+        $command = [
+            $this->dockerBin,
+            'run', '--rm',
+            '-v', "{$workspacePath}:/repo:rw",
+            '--env', 'UPGRADER_WORKSPACE=/repo',
+        ];
+
+        if ($options?->extraComposerCacheDir !== null) {
+            $command[] = '-v';
+            $command[] = "{$options->extraComposerCacheDir}:/composer-cache:rw";
+            $command[] = '--env';
+            $command[] = 'UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache';
+        }
+
+        $command[] = '--entrypoint';
+        $command[] = 'php';
+        $command[] = $hop->dockerImage;
+        $command[] = '/upgrader/src/Composer/DependencyUpgrader.php';
+        $command[] = '/repo';
+        $command[] = sprintf('--framework-target=^%s.0', $hop->toVersion);
+        $command[] = '--compatibility=/upgrader/docs/package-compatibility.json';
+
+        return $command;
+    }
+
+    /**
+     * Warm a persistent Composer cache in a separate container invocation that
+     * is allowed to use the network for private VCS repositories.
+     */
+    public function primeComposerCache(Hop $hop, string $workspacePath, string $composerCacheDir): void
+    {
+        $command = $this->buildPrimerCommand($hop, $workspacePath, $composerCacheDir);
+
+        $process = $this->processFactory !== null
+            ? ($this->processFactory)($command)
+            : new Process($command);
+
+        $process->setTimeout($this->timeoutSeconds);
+        $process->setEnv([]);
+        $process->setInput(null);
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            return;
+        }
+
+        $errorOutput = trim($process->getErrorOutput());
+        if ($errorOutput === '') {
+            $errorOutput = trim($process->getOutput());
+        }
+
+        throw new OrchestratorException(sprintf(
+            'Composer cache primer failed for hop %s->%s: %s',
+            $hop->fromVersion,
+            $hop->toVersion,
+            $errorOutput !== '' ? $errorOutput : 'unknown error',
+        ));
+    }
+
+    public function runDependencyPreStage(
+        Hop $hop,
+        string $workspacePath,
+        EventStreamer $streamer,
+        ?UpgradeOptions $options = null,
+    ): void {
+        $command = $this->buildDependencyPreStageCommand($hop, $workspacePath, $options);
+
+        $process = $this->processFactory !== null
+            ? ($this->processFactory)($command)
+            : new Process($command);
+
+        $process->setTimeout($this->timeoutSeconds);
+        $process->setEnv([]);
+        $process->setInput(null);
+
+        /** @var list<string> $stderrLines */
+        $stderrLines = [];
+        $stdoutBuffer = '';
+
+        $process->start();
+
+        foreach ($process as $type => $chunk) {
+            if ($type === Process::ERR) {
+                foreach (explode("\n", $chunk) as $errLine) {
+                    $trimmed = trim($errLine);
+                    if ($trimmed !== '') {
+                        $stderrLines[] = $trimmed;
+                    }
+                }
+            } else {
+                $stdoutBuffer .= $chunk;
+                $stdoutBuffer = $this->flushLines($stdoutBuffer, $streamer);
+            }
+        }
+
+        $remaining = trim($stdoutBuffer);
+        if ($remaining !== '') {
+            $this->dispatchLine($remaining, $streamer);
+        }
+
+        if (!empty($stderrLines)) {
+            $streamer->dispatchStderrLines($stderrLines);
+        }
+
+        $exitCode = $process->getExitCode() ?? 1;
+        if ($exitCode !== 0) {
+            throw new OrchestratorException(sprintf(
+                'Dependency pre-stage failed for hop %s->%s: %s',
+                $hop->fromVersion,
+                $hop->toVersion,
+                implode(' | ', array_slice($stderrLines, -5)),
+            ));
+        }
     }
 
     /**

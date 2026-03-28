@@ -2,11 +2,13 @@
 # ============================================================
 # Hop Container: lumen-migrator
 # Lumen → Laravel migration pipeline
-# Base PHP: 8.1-cli-alpine
+# Base PHP: configurable
 # ============================================================
 
+ARG PHP_BASE_IMAGE=php:8.1-cli-alpine
+
 # ─── Stage 1: Base ────────────────────────────────────────────────────────────
-FROM php:8.1-cli-alpine AS base
+FROM ${PHP_BASE_IMAGE} AS base
 
 RUN apk add --no-cache \
     bash \
@@ -49,6 +51,13 @@ RUN COMPOSER_CACHE_DIR=/laravel-composer-cache \
         --prefer-dist \
         --quiet
 
+    RUN composer create-project \
+        --no-interaction \
+        --no-install \
+        --no-scripts \
+        laravel/laravel:^9.0 \
+        /laravel-scaffold-template
+
 # ─── Stage 4: Runtime ─────────────────────────────────────────────────────────
 FROM base AS runtime
 
@@ -63,6 +72,9 @@ COPY --from=deps /upgrader/vendor /upgrader/vendor
 # Container-side application source
 COPY src-container/ /upgrader/src/
 
+# Rector configs used by the Lumen migration runner
+COPY rector-configs/ /upgrader/rector-configs/
+
 # Inline Diff2Html assets (no CDN)
 COPY assets/diff2html.min.css /upgrader/assets/diff2html.min.css
 COPY assets/diff2html.min.js  /upgrader/assets/diff2html.min.js
@@ -75,7 +87,12 @@ RUN chmod +x /upgrader/entrypoint.sh
 COPY --from=laravel-cache --chown=upgrader:upgrader \
     /laravel-composer-cache /home/upgrader/.composer/cache
 
+COPY --from=laravel-cache --chown=upgrader:upgrader \
+    /laravel-scaffold-template /upgrader/laravel-scaffold-template
+
 USER upgrader
+
+ENV UPGRADER_LARAVEL_SCAFFOLD_TEMPLATE=/upgrader/laravel-scaffold-template
 
 # Workspace is mounted at runtime by the host orchestrator
 WORKDIR /workspace

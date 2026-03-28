@@ -38,6 +38,7 @@ This builds two images:
 ```bash
 # Upgrade a local Laravel 8 application to Laravel 9
 bin/upgrader run --repo /path/to/laravel-8-app --to 9
+bin/upgrader run --repo C:/dev/marketplace/marketplace-gateway --to 9
 
 # Dry-run (analyse only, no changes written back)
 bin/upgrader run --repo /path/to/laravel-8-app --to 9 --dry-run
@@ -89,7 +90,7 @@ bin/upgrader analyse --repo /path/to/laravel-8-app
 Starts the standalone real-time dashboard server on port 8765. Normally launched automatically by `run`; use this to reconnect a browser to a running pipeline.
 
 ```bash
-bin/upgrader dashboard
+bin/upgrader dashboard --log ./upgrader-output/audit.jsonnd
 # Then open: http://localhost:8765
 ```
 

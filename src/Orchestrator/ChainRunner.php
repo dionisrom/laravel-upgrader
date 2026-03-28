@@ -328,15 +328,29 @@ final class ChainRunner
      */
     private function copyDirectory(string $src, string $dst): void
     {
+        // Resolve the source path to its canonical form so that the prefix
+        // length matches what SplFileInfo::getRealPath() returns.  On Windows
+        // sys_get_temp_dir() may return an 8.3 short-name path (e.g.
+        // C:\Users\B_DION~1\…) while getRealPath() always returns the long
+        // name (C:\Users\b_dionisie\…), causing substr() to produce garbled
+        // relative paths and silently copying files to wrong destinations.
+        $realSrc = realpath($src);
+        if ($realSrc === false) {
+            throw new OrchestratorException(sprintf(
+                'Source directory does not exist for workspace staging: %s',
+                $src,
+            ));
+        }
+
         /** @var \RecursiveIteratorIterator<\RecursiveDirectoryIterator> $it */
         $it = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($src, \FilesystemIterator::SKIP_DOTS),
+            new \RecursiveDirectoryIterator($realSrc, \FilesystemIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST,
         );
 
         foreach ($it as $item) {
             /** @var \SplFileInfo $item */
-            $rel  = substr((string) $item->getRealPath(), strlen(rtrim($src, \DIRECTORY_SEPARATOR)) + 1);
+            $rel  = substr((string) $item->getRealPath(), strlen($realSrc) + 1);
             $dest = $dst . \DIRECTORY_SEPARATOR . $rel;
 
             if ($item->isDir()) {

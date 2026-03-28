@@ -149,6 +149,10 @@ if [ ! -d "${WORKSPACE}" ]; then
     exit 2
 fi
 
+# Mark the workspace as a safe directory for git — the bind-mounted volume is
+# typically owned by a different UID (host user) than the container user.
+git config --global --add safe.directory "${WORKSPACE}" 2>/dev/null || true
+
 if [ ! -f "${RECTOR_CONFIG}" ]; then
     emit "{\"event\":\"config_error\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"error\":\"Rector config not found: ${RECTOR_CONFIG}\"}"
     exit 2
@@ -182,9 +186,14 @@ run_stage "SlimSkeletonMigrator" "SlimSkeleton/SlimSkeletonGenerator.php"
 
 # ─── Stage 6: DependencyUpgrader ──────────────────────────────────────────────
 
-run_stage "DependencyUpgrader" "Composer/DependencyUpgrader.php" \
-    "--framework-target=^11.0" \
-    "--compatibility=/upgrader/docs/package-compatibility.json"
+if [ "${UPGRADER_SKIP_DEPENDENCY_UPGRADER:-0}" = "1" ]; then
+    emit "{\"event\":\"stage_start\",\"stage\":\"DependencyUpgrader\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"mode\":\"pre_staged\"}"
+    emit "{\"event\":\"stage_complete\",\"stage\":\"DependencyUpgrader\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"duration_ms\":0,\"mode\":\"pre_staged\"}"
+else
+    run_stage "DependencyUpgrader" "Composer/DependencyUpgrader.php" \
+        "--framework-target=^11.0" \
+        "--compatibility=/upgrader/docs/package-compatibility.json"
+fi
 
 # ─── Stage 7: VerificationPipeline ────────────────────────────────────────────
 

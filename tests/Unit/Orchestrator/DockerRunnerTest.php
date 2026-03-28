@@ -8,6 +8,7 @@ use App\Orchestrator\DockerRunner;
 use App\Orchestrator\EventStreamer;
 use App\Orchestrator\Hop;
 use App\Orchestrator\HopFailureException;
+use App\Orchestrator\UpgradeOptions;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
@@ -62,6 +63,48 @@ final class DockerRunnerTest extends TestCase
         $command = $runner->buildCommand($this->hop, '/ws', '/out');
 
         self::assertContains('--network=none', $command, '--network=none MUST always be present');
+    }
+
+    public function testBuildCommandMountsExtraComposerCacheWhenConfigured(): void
+    {
+        $runner = new DockerRunner();
+        $options = new UpgradeOptions(extraComposerCacheDir: '/tmp/cache', skipDependencyUpgrader: true);
+
+        $command = $runner->buildCommand($this->hop, '/ws', '/out', $options);
+
+        self::assertContains('/tmp/cache:/composer-cache:rw', $command);
+        self::assertContains('UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache', $command);
+        self::assertContains('UPGRADER_SKIP_DEPENDENCY_UPGRADER=1', $command);
+        self::assertContains('--network=none', $command);
+    }
+
+    public function testBuildPrimerCommandAllowsSeparateNetworkedPrefetch(): void
+    {
+        $runner = new DockerRunner();
+
+        $command = $runner->buildPrimerCommand($this->hop, '/ws', '/cache');
+
+        self::assertSame('docker', $command[0]);
+        self::assertContains('/ws:/repo:rw', $command);
+        self::assertContains('/cache:/composer-cache:rw', $command);
+        self::assertContains('COMPOSER_CACHE_DIR=/composer-cache', $command);
+        self::assertContains('/upgrader/src/Composer/RepositoryCachePrimer.php', $command);
+        self::assertNotContains('--network=none', $command);
+    }
+
+    public function testBuildDependencyPreStageCommandUsesSeparateNetworkedContainer(): void
+    {
+        $runner = new DockerRunner();
+        $options = new UpgradeOptions(extraComposerCacheDir: '/cache');
+
+        $command = $runner->buildDependencyPreStageCommand($this->hop, '/ws', $options);
+
+        self::assertContains('/ws:/repo:rw', $command);
+        self::assertContains('/cache:/composer-cache:rw', $command);
+        self::assertContains('UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache', $command);
+        self::assertContains('/upgrader/src/Composer/DependencyUpgrader.php', $command);
+        self::assertContains('--framework-target=^9.0', $command);
+        self::assertNotContains('--network=none', $command);
     }
 
     public function testNonZeroExitThrowsHopFailureException(): void

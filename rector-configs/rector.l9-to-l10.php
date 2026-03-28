@@ -54,5 +54,5 @@ return $config
         LaravelModelReturnTypeRector::class,
     ], $packageRules))
 
-    ->withParallel()
+    ->withoutParallel()
     ->withImportNames(importDocBlockNames: false);

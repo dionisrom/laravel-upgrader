@@ -195,7 +195,7 @@ final class ProviderCallCollector extends NodeVisitorAbstract
      */
     public array $registrations = [];
 
-    public function leaveNode(Node $node): null
+    public function leaveNode(Node $node)
     {
         if (!($node instanceof MethodCall)) {
             return null;

@@ -13,6 +13,8 @@ namespace App\Orchestrator;
  */
 final class MultiHopPlanner
 {
+    private readonly HopImageResolver $imageResolver;
+
     /**
      * All supported consecutive hop image names, keyed as "from:to".
      *
@@ -32,8 +34,10 @@ final class MultiHopPlanner
             '11:12' => 'upgrader/hop-11-to-12',
             '12:13' => 'upgrader/hop-12-to-13',
         ],
+        ?string $phpConstraint = null,
     ) {
         $this->hopImages = $hopImages;
+        $this->imageResolver = new HopImageResolver($hopImages, phpConstraint: $phpConstraint);
     }
 
     /**
@@ -85,12 +89,14 @@ final class MultiHopPlanner
                 ));
             }
 
+            $resolved = $this->imageResolver->resolve($key);
+
             $hops[] = new Hop(
-                dockerImage: $this->hopImages[$key],
+                dockerImage: $resolved['dockerImage'],
                 fromVersion: (string) $v,
                 toVersion:   (string) ($v + 1),
                 type:        'laravel',
-                phpBase:     null,
+                phpBase:     $resolved['phpBase'],
             );
         }
 

@@ -166,7 +166,7 @@ final class MiddlewareCallCollector extends NodeVisitorAbstract
     /** @var LumenManualReviewItem[] */
     public array $manualReviewItems = [];
 
-    public function leaveNode(Node $node): null
+    public function leaveNode(Node $node)
     {
         if (!($node instanceof MethodCall)) {
             return null;
@@ -259,7 +259,7 @@ final class MiddlewareCallCollector extends NodeVisitorAbstract
         }
     }
 
-    private function extractClassString(Node\Expr $value): string|null
+    private function extractClassString(Node\Expr $value): ?string
     {
         // SomeClass::class
         if ($value instanceof Node\Expr\ClassConstFetch && $value->class instanceof Node\Name) {

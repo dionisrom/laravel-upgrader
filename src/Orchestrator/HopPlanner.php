@@ -6,6 +6,9 @@ namespace App\Orchestrator;
 
 final class HopPlanner
 {
+    private readonly HopImageResolver $imageResolver;
+    private readonly string $frameworkType;
+
     /**
      * Supported hop paths: 'fromVersion:toVersion' => docker image name.
      *
@@ -19,8 +22,12 @@ final class HopPlanner
      */
     public function __construct(
         array $hopImages = ['8:9' => 'upgrader/hop-8-to-9'],
+        ?string $phpConstraint = null,
+        string $frameworkType = 'laravel',
     ) {
         $this->hopImages = $hopImages;
+        $this->imageResolver = new HopImageResolver($hopImages, phpConstraint: $phpConstraint);
+        $this->frameworkType = $frameworkType;
     }
 
     /**
@@ -65,12 +72,14 @@ final class HopPlanner
             ));
         }
 
+        $resolved = $this->imageResolver->resolve($key);
+
         $hop = new Hop(
-            dockerImage: $this->hopImages[$key],
+            dockerImage: $resolved['dockerImage'],
             fromVersion: $fromVersion,
             toVersion: $toVersion,
-            type: 'laravel',
-            phpBase: null,
+            type: $this->frameworkType,
+            phpBase: $resolved['phpBase'],
         );
 
         return new HopSequence([$hop]);

@@ -28,6 +28,7 @@ final class ScaffoldGenerator
 
     public function __construct(
         private readonly string $composerBin = 'composer',
+        private readonly ?string $templatePath = null,
     ) {}
 
     /**
@@ -41,7 +42,11 @@ final class ScaffoldGenerator
         $this->preserveOriginalBootstrap($lumenSource);
 
         try {
-            $this->runComposerCreateProject($targetPath);
+            if ($this->templatePath !== null && is_dir($this->templatePath)) {
+                $this->copyTemplateScaffold($targetPath);
+            } else {
+                $this->runComposerCreateProject($targetPath);
+            }
         } catch (\Throwable $e) {
             $result = ScaffoldResult::failure($targetPath, $e->getMessage());
             $this->emitEvent('lumen_scaffold_failed', [
@@ -59,6 +64,9 @@ final class ScaffoldGenerator
             'lumen_source'       => $lumenSource,
             'original_bootstrap' => $originalBootstrap,
             'laravel_version'    => self::LARAVEL_VERSION,
+            'mode'               => $this->templatePath !== null && is_dir($this->templatePath)
+                ? 'template-copy'
+                : 'composer-create-project',
         ]);
 
         return $result;
@@ -114,6 +122,36 @@ final class ScaffoldGenerator
                 "composer create-project failed (exit {$process->getExitCode()}): " .
                 $process->getErrorOutput()
             );
+        }
+    }
+
+    private function copyTemplateScaffold(string $targetPath): void
+    {
+        if (!is_dir($targetPath) && !mkdir($targetPath, 0755, true) && !is_dir($targetPath)) {
+            throw new ScaffoldException("Failed to create scaffold target directory: {$targetPath}");
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->templatePath, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST,
+        );
+
+        foreach ($iterator as $item) {
+            $sourcePath = $item->getPathname();
+            $relativePath = substr($sourcePath, strlen($this->templatePath) + 1);
+            $destinationPath = $targetPath . DIRECTORY_SEPARATOR . $relativePath;
+
+            if ($item->isDir()) {
+                if (!is_dir($destinationPath) && !mkdir($destinationPath, 0755, true) && !is_dir($destinationPath)) {
+                    throw new ScaffoldException("Failed to create scaffold directory: {$destinationPath}");
+                }
+
+                continue;
+            }
+
+            if (!copy($sourcePath, $destinationPath)) {
+                throw new ScaffoldException("Failed to copy scaffold file: {$relativePath}");
+            }
         }
     }
 
