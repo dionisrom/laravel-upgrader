@@ -24,7 +24,11 @@
         "psr-4": {
             "App\\": "src/",
             "AppContainer\\": "src-container/"
-        }
+        },
+        "exclude-from-classmap": [
+            "tests/Fixtures/",
+            "tests/Unit/Rector/Rules/"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
