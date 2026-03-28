@@ -50,7 +50,7 @@ final class ComposerVerifier implements VerifierInterface
         }
 
         $installProcess = ($this->processFactory)(
-            [$ctx->composerBin, 'install', '--no-interaction', '--no-ansi'],
+            [$ctx->composerBin, 'install', '--no-interaction', '--no-ansi', '--no-audit'],
             $workspacePath,
         );
         $installProcess->run();

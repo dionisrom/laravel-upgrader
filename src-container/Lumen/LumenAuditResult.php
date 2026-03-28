@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class LumenAuditResult
+final class LumenAuditResult
 {
     /**
      * @param LumenManualReviewItem[] $manualReviewItems

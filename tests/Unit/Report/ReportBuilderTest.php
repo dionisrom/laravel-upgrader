@@ -31,7 +31,7 @@ final class ReportBuilderTest extends TestCase
     {
         parent::tearDown();
 
-        foreach (['report.html', 'report.json', 'manual-review.md'] as $file) {
+        foreach (['report.html', 'report.json', 'manual-review.md', 'audit.log.json'] as $file) {
             @unlink($this->tmpOutputDir . DIRECTORY_SEPARATOR . $file);
         }
         @rmdir($this->tmpOutputDir);
@@ -41,7 +41,7 @@ final class ReportBuilderTest extends TestCase
         @rmdir($this->stubAssetsDir);
     }
 
-    public function testBuildCreatesAllThreeFiles(): void
+    public function testBuildCreatesAllFourFiles(): void
     {
         $builder = new ReportBuilder($this->tmpOutputDir, $this->stubAssetsDir);
         $builder->build($this->makeData());
@@ -49,6 +49,7 @@ final class ReportBuilderTest extends TestCase
         $this->assertFileExists($this->tmpOutputDir . DIRECTORY_SEPARATOR . 'report.html');
         $this->assertFileExists($this->tmpOutputDir . DIRECTORY_SEPARATOR . 'report.json');
         $this->assertFileExists($this->tmpOutputDir . DIRECTORY_SEPARATOR . 'manual-review.md');
+        $this->assertFileExists($this->tmpOutputDir . DIRECTORY_SEPARATOR . 'audit.log.json');
     }
 
     public function testBuildReturnsListOfPaths(): void
@@ -57,7 +58,7 @@ final class ReportBuilderTest extends TestCase
         $paths   = $builder->build($this->makeData());
 
         $this->assertIsArray($paths);
-        $this->assertCount(3, $paths);
+        $this->assertCount(4, $paths);
 
         foreach ($paths as $path) {
             $this->assertFileExists($path, "Returned path must exist: {$path}");

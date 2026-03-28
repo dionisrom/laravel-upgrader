@@ -73,6 +73,19 @@ final class EventBusTest extends TestCase
         self::assertStringContainsString('"event":"ping"', $written[0]);
     }
 
+    public function testBroadcastRemovesDeadClientFromList(): void
+    {
+        $bus = new EventBus();
+
+        $brokenStream = new ThroughStream();
+        $brokenStream->close();
+
+        $bus->addClient('broken', $brokenStream);
+        $bus->broadcast(['event' => 'test']);
+
+        self::assertSame(0, $bus->clientCount());
+    }
+
     public function testConsumeCallsBroadcast(): void
     {
         $bus = new EventBus();

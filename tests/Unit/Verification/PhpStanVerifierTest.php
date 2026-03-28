@@ -112,6 +112,42 @@ final class PhpStanVerifierTest extends TestCase
         self::assertStringContainsString('6', $result->issues[0]->message);
     }
 
+    public function testEmitsPhpstanRegressionEventOnFailure(): void
+    {
+        $baselinePath = $this->tmpDir . '/baseline.json';
+        file_put_contents($baselinePath, json_encode(['error_count' => 2]));
+
+        $phpstanOutput = json_encode([
+            'totals' => ['file_errors' => 5, 'other_errors' => 0],
+            'files'  => [],
+            'errors' => [],
+        ]);
+
+        $stream  = fopen('php://memory', 'rw');
+        self::assertIsResource($stream);
+        $emitter = new \AppContainer\EventEmitter('test-hop', $stream);
+
+        $verifier = new PhpStanVerifier($this->fakeFactory((string) $phpstanOutput, 0), $emitter);
+        $ctx      = new VerificationContext(
+            workspacePath: $this->tmpDir,
+            baselinePath:  $baselinePath,
+        );
+
+        $result = $verifier->verify($this->tmpDir, $ctx);
+
+        self::assertFalse($result->passed);
+
+        rewind($stream);
+        $output = stream_get_contents($stream);
+        fclose($stream);
+
+        self::assertIsString($output);
+        $event = json_decode(trim((string) $output), true);
+        self::assertSame('phpstan_regression', $event['event']);
+        self::assertSame(2, $event['pre_error_count']);
+        self::assertSame(5, $event['post_error_count']);
+    }
+
     public function testHandlesInvalidPhpStanJsonGracefully(): void
     {
         $verifier     = new PhpStanVerifier($this->fakeFactory('not-json', 0));

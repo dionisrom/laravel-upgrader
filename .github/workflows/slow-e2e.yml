@@ -1,0 +1,36 @@
+name: Slow E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'
+
+jobs:
+  slow-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build hop images
+        run: docker buildx bake hop-8-to-9 hop-9-to-10 hop-10-to-11 hop-11-to-12 hop-12-to-13 --load
+
+      - name: Run slow E2E suite with final-output PHPStan and container telemetry assertions
+        env:
+          DOCKER_AVAILABLE: '1'
+          E2E_MAX_CONTAINER_MEMORY_MB: '512'
+        run: composer test:e2e

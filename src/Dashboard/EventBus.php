@@ -39,8 +39,12 @@ final class EventBus implements EventConsumerInterface
 
         foreach ($this->clients as $id => $stream) {
             try {
-                $stream->write($payload);
+                if ($stream->write($payload) === false) {
+                    $stream->close();
+                    unset($this->clients[$id]);
+                }
             } catch (\Throwable) {
+                $stream->close();
                 unset($this->clients[$id]);
             }
         }

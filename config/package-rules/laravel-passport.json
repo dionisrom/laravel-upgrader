@@ -1,0 +1,35 @@
+{
+  "package": "laravel/passport",
+  "description": "Laravel Passport migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^10.0",
+      "to_constraint": "^11.0",
+      "rules": [],
+      "notes": "Passport V11 Passport::routes() deprecated — manual review flagged, no auto-fix"
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^11.0",
+      "to_constraint": "^11.0",
+      "rules": [],
+      "notes": "No auto-fixable PHP AST changes. Route registration changes require manual review."
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^11.0",
+      "to_constraint": "^12.0",
+      "rules": [],
+      "notes": "No auto-fixable changes"
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^12.0",
+      "to_constraint": "^12.0",
+      "rules": []
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^12.0",
+      "to_constraint": "^13.0",
+      "rules": [],
+      "notes": "Passport 13 requires league/oauth2-server ^9.2, is now headless (views removed), and introduces optional oauth_clients schema changes. No auto-fixable PHP AST changes — manual review for league/oauth2-server type signature changes."
+    }
+  }
+}

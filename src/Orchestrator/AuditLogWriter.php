@@ -10,6 +10,7 @@ final class AuditLogWriter implements EventConsumerInterface
         private readonly string $logPath,
         private readonly string $runId,
         private readonly string $repoSha,
+        private readonly string $hostVersion = '',
     ) {}
 
     /**
@@ -23,9 +24,10 @@ final class AuditLogWriter implements EventConsumerInterface
     {
         /** @var array<string, mixed> $enriched */
         $enriched = array_merge($event, [
-            'run_id'   => $this->runId,
-            'repo_sha' => $this->repoSha,
-            'host_ts'  => microtime(true),
+            'run_id'       => $this->runId,
+            'host_version' => $this->hostVersion,
+            'repo_sha'     => $this->repoSha,
+            'host_ts'      => microtime(true),
         ]);
 
         $enriched = $this->sanitize($enriched);
@@ -63,7 +65,7 @@ final class AuditLogWriter implements EventConsumerInterface
      */
     private function sanitize(array $event): array
     {
-        $blocked = ['source_code', 'file_contents', 'content', 'token', 'password', 'secret', 'key'];
+        $blocked = ['source_code', 'file_contents', 'content', 'token', 'password', 'secret', 'api_key', 'secret_key', 'private_key', 'auth_key'];
 
         foreach ($blocked as $field) {
             unset($event[$field]);

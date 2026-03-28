@@ -1,0 +1,106 @@
+{
+    "generated": "2026-03-23",
+    "hop": "10_to_11",
+    "packages": {
+        "laravel/framework": {
+            "support": true,
+            "recommended_version": "^11.0",
+            "notes": "Core framework upgrade. Requires PHP 8.2+."
+        },
+        "laravel/sanctum": {
+            "support": true,
+            "recommended_version": "^4.0",
+            "notes": "Major version bump for L11 compatibility."
+        },
+        "laravel/telescope": {
+            "support": true,
+            "recommended_version": "^5.0",
+            "notes": "Requires major version upgrade."
+        },
+        "laravel/horizon": {
+            "support": true,
+            "recommended_version": "^5.21",
+            "notes": "Minor upgrade for L11 compatibility."
+        },
+        "laravel/passport": {
+            "support": true,
+            "recommended_version": "^12.0",
+            "notes": "Major version bump."
+        },
+        "spatie/laravel-permission": {
+            "support": true,
+            "recommended_version": "^6.0",
+            "notes": "Major version bump for L11 compatibility."
+        },
+        "spatie/laravel-medialibrary": {
+            "support": true,
+            "recommended_version": "^11.0",
+            "notes": "Major version follows Laravel."
+        },
+        "spatie/laravel-query-builder": {
+            "support": true,
+            "recommended_version": "^5.7",
+            "notes": "Minor upgrade for L11 compatibility."
+        },
+        "spatie/laravel-activitylog": {
+            "support": true,
+            "recommended_version": "^4.7",
+            "notes": "Compatible, minor patch needed."
+        },
+        "sentry/sentry-laravel": {
+            "support": true,
+            "recommended_version": "^4.0",
+            "notes": "Major version upgrade. Remove manual captureUnhandledException() call."
+        },
+        "bugsnag/bugsnag-laravel": {
+            "support": true,
+            "recommended_version": "^2.26",
+            "notes": "Compatible with minor patch. Auto-reporting via service provider."
+        },
+        "barryvdh/laravel-debugbar": {
+            "support": true,
+            "recommended_version": "^3.13",
+            "notes": "Compatible, minor patch needed."
+        },
+        "barryvdh/laravel-dompdf": {
+            "support": true,
+            "recommended_version": "^3.0",
+            "notes": "Major version bump."
+        },
+        "laravel/breeze": {
+            "support": true,
+            "recommended_version": "^2.0",
+            "notes": "Major version for L11 slim skeleton compatibility."
+        },
+        "laravel/jetstream": {
+            "support": true,
+            "recommended_version": "^5.0",
+            "notes": "Major version upgrade required."
+        },
+        "livewire/livewire": {
+            "support": true,
+            "recommended_version": "^3.4",
+            "notes": "Compatible, minor patch needed."
+        },
+        "filament/filament": {
+            "support": true,
+            "recommended_version": "^3.2",
+            "notes": "Compatible with minor patch."
+        },
+        "maatwebsite/excel": {
+            "support": true,
+            "recommended_version": "^3.1.55",
+            "notes": "Compatible, minor patch needed."
+        },
+        "intervention/image": {
+            "support": true,
+            "recommended_version": "^3.0",
+            "notes": "Major version with breaking API changes."
+        },
+        "tymon/jwt-auth": {
+            "support": true,
+            "recommended_version": "^2.1",
+            "notes": "Compatible, minor patch needed."
+        }
+    }
+}

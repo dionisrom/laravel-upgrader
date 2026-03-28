@@ -164,6 +164,38 @@ class BreakingChangeRegistryTest extends TestCase
     }
 
     // -----------------------------------------------------------------------
+    // TRD-REG-002: Rector rule ↔ registry cross-check
+    // -----------------------------------------------------------------------
+
+    public function testEveryL8ToL9RectorRuleHasRegistryEntry(): void
+    {
+        $rulesDir = realpath(__DIR__ . '/../../src-container/Rector/Rules/L8ToL9');
+        if ($rulesDir === false || !is_dir($rulesDir)) {
+            $this->markTestSkipped('L8ToL9 rules directory not found');
+        }
+
+        $registry = BreakingChangeRegistry::load($this->validJson);
+        $registeredRules = array_filter(
+            array_column($registry->all(), 'rector_rule'),
+            static fn(?string $r): bool => $r !== null
+                && str_starts_with($r, 'AppContainer\\Rector\\Rules\\L8ToL9\\')
+        );
+
+        $ruleFiles = glob($rulesDir . '/*.php');
+        $this->assertNotEmpty($ruleFiles, 'Expected at least one Rector rule file');
+
+        foreach ($ruleFiles as $file) {
+            $className = pathinfo($file, PATHINFO_FILENAME);
+            $fqcn = 'AppContainer\\Rector\\Rules\\L8ToL9\\' . $className;
+            $this->assertContains(
+                $fqcn,
+                $registeredRules,
+                "TRD-REG-002: Rector rule {$fqcn} has no matching rector_rule entry in breaking-changes.json"
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // load() — failure cases
     // -----------------------------------------------------------------------
 
@@ -197,19 +229,10 @@ class BreakingChangeRegistryTest extends TestCase
 
     public function testLoadThrowsOnDuplicateId(): void
     {
-        $entry = [
-            'id' => 'duplicate_id',
-            'severity' => 'high',
-            'category' => 'eloquent',
-            'title' => 'Duplicate',
-            'automated' => false,
-        ];
-        $tmp = $this->writeTempJson(json_encode([
-            'hop' => '8_to_9',
-            'laravel_from' => '8.x',
-            'laravel_to' => '9.x',
+        $entry = $this->validEntry(['id' => 'duplicate_id']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
             'breaking_changes' => [$entry, $entry],
-        ]));
+        ])));
         $this->expectException(RegistryCorruptException::class);
         $this->expectExceptionMessageMatches('/duplicate/i');
         BreakingChangeRegistry::load($tmp);
@@ -217,18 +240,9 @@ class BreakingChangeRegistryTest extends TestCase
 
     public function testLoadThrowsOnInvalidSeverity(): void
     {
-        $tmp = $this->writeTempJson(json_encode([
-            'hop' => '8_to_9',
-            'laravel_from' => '8.x',
-            'laravel_to' => '9.x',
-            'breaking_changes' => [[
-                'id' => 'test_entry',
-                'severity' => 'critical', // invalid
-                'category' => 'eloquent',
-                'title' => 'Test',
-                'automated' => false,
-            ]],
-        ]));
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$this->validEntry(['severity' => 'critical'])],
+        ])));
         $this->expectException(RegistryCorruptException::class);
         $this->expectExceptionMessageMatches('/severity/i');
         BreakingChangeRegistry::load($tmp);
@@ -236,18 +250,9 @@ class BreakingChangeRegistryTest extends TestCase
 
     public function testLoadThrowsOnInvalidCategory(): void
     {
-        $tmp = $this->writeTempJson(json_encode([
-            'hop' => '8_to_9',
-            'laravel_from' => '8.x',
-            'laravel_to' => '9.x',
-            'breaking_changes' => [[
-                'id' => 'test_entry',
-                'severity' => 'high',
-                'category' => 'invalid_category', // invalid
-                'title' => 'Test',
-                'automated' => false,
-            ]],
-        ]));
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$this->validEntry(['category' => 'invalid_category'])],
+        ])));
         $this->expectException(RegistryCorruptException::class);
         $this->expectExceptionMessageMatches('/category/i');
         BreakingChangeRegistry::load($tmp);
@@ -255,20 +260,127 @@ class BreakingChangeRegistryTest extends TestCase
 
     public function testLoadThrowsOnMissingEntryRequiredField(): void
     {
-        $tmp = $this->writeTempJson(json_encode([
-            'hop' => '8_to_9',
-            'laravel_from' => '8.x',
-            'laravel_to' => '9.x',
-            'breaking_changes' => [[
-                'id' => 'test_entry',
-                'severity' => 'high',
-                'category' => 'eloquent',
-                // 'title' intentionally missing
-                'automated' => false,
-            ]],
-        ]));
+        $entry = $this->validEntry();
+        unset($entry['title']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
         $this->expectException(RegistryCorruptException::class);
         $this->expectExceptionMessageMatches('/title/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingTopLevelPhpMinimum(): void
+    {
+        $data = $this->validTopLevel();
+        unset($data['php_minimum']);
+        $tmp = $this->writeTempJson(json_encode($data));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/php_minimum/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingTopLevelLastCurated(): void
+    {
+        $data = $this->validTopLevel();
+        unset($data['last_curated']);
+        $tmp = $this->writeTempJson(json_encode($data));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/last_curated/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingDescription(): void
+    {
+        $entry = $this->validEntry();
+        unset($entry['description']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/description/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingAffectsLumen(): void
+    {
+        $entry = $this->validEntry();
+        unset($entry['affects_lumen']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/affects_lumen/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingManualReviewRequired(): void
+    {
+        $entry = $this->validEntry();
+        unset($entry['manual_review_required']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/manual_review_required/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingOfficialDocAnchor(): void
+    {
+        $entry = $this->validEntry();
+        unset($entry['official_doc_anchor']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/official_doc_anchor/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingRectorRule(): void
+    {
+        $entry = $this->validEntry();
+        unset($entry['rector_rule']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/rector_rule/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMissingMigrationExample(): void
+    {
+        $entry = $this->validEntry();
+        unset($entry['migration_example']);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/migration_example/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMigrationExampleMissingBefore(): void
+    {
+        $entry = $this->validEntry(['migration_example' => ['after' => '// new']]);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/before/');
+        BreakingChangeRegistry::load($tmp);
+    }
+
+    public function testLoadThrowsOnMigrationExampleMissingAfter(): void
+    {
+        $entry = $this->validEntry(['migration_example' => ['before' => '// old']]);
+        $tmp = $this->writeTempJson(json_encode($this->validTopLevel([
+            'breaking_changes' => [$entry],
+        ])));
+        $this->expectException(RegistryCorruptException::class);
+        $this->expectExceptionMessageMatches('/after/');
         BreakingChangeRegistry::load($tmp);
     }
 
@@ -281,5 +393,42 @@ class BreakingChangeRegistryTest extends TestCase
         $path = sys_get_temp_dir() . '/bcr_test_' . uniqid() . '.json';
         file_put_contents($path, $content);
         return $path;
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function validTopLevel(array $overrides = []): array
+    {
+        return array_merge([
+            'hop' => '8_to_9',
+            'laravel_from' => '8.x',
+            'laravel_to' => '9.x',
+            'php_minimum' => '8.0',
+            'last_curated' => '2026-03-21',
+            'breaking_changes' => [],
+        ], $overrides);
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function validEntry(array $overrides = []): array
+    {
+        return array_merge([
+            'id' => 'test_entry',
+            'severity' => 'high',
+            'category' => 'eloquent',
+            'title' => 'Test Entry',
+            'description' => 'A test breaking change.',
+            'rector_rule' => null,
+            'automated' => false,
+            'affects_lumen' => false,
+            'manual_review_required' => false,
+            'migration_example' => ['before' => '// old', 'after' => '// new'],
+            'official_doc_anchor' => 'https://laravel.com/docs/9.x/upgrade#test',
+        ], $overrides);
     }
 }

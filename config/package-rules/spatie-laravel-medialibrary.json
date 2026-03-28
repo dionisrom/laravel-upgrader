@@ -1,0 +1,39 @@
+{
+  "package": "spatie/laravel-medialibrary",
+  "description": "Spatie Laravel MediaLibrary migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^9.0",
+      "to_constraint": "^9.0",
+      "rules": [],
+      "notes": "No breaking namespace changes between Laravel 8 and 9 for medialibrary V9"
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^9.0",
+      "to_constraint": "^10.0",
+      "rules": [
+        "AppContainer\\Rector\\Rules\\Package\\Spatie\\HasMediaTraitRector"
+      ],
+      "rector_config": "rector-configs/packages/rector.spatie-medialibrary-v9-v10.php",
+      "notes": "MediaLibrary V10: HasMedia and HasMediaTrait namespace/name changes"
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^10.0",
+      "to_constraint": "^10.0",
+      "rules": [],
+      "notes": "MediaLibrary V10 supports Laravel 10+. V11 exists but is not yet stable."
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^11.0",
+      "to_constraint": "^11.0",
+      "rules": [],
+      "notes": "No breaking changes"
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^11.0",
+      "to_constraint": "^11.0",
+      "rules": [],
+      "notes": "No breaking changes"
+    }
+  }
+}

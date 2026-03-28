@@ -1,6 +1,6 @@
 ---
 description: "Use when: building Docker hop containers, writing Dockerfiles, entrypoint scripts, multi-platform builds (amd64/arm64), CI/CD pipeline templates (GitHub Actions, GitLab CI, Bitbucket Pipelines), Alpine Linux optimization, PHP Docker images. Specialist for container and DevOps tasks."
-tools: [read, edit, search, execute, context7/*, memory/*]
+tools: [read, edit, search, execute, context7/*, memory/*, 'sequentialthinking/*']
 model: "Claude Sonnet 4.6 (copilot)"
 ---
 
@@ -70,3 +70,9 @@ P1-09, P2-07, P3-02, P3-03, P3-04
 - No secrets or credentials in images
 - Entrypoint must return non-zero exit code on transform failure
 - CI templates must work without modification (copy-paste ready)
+
+## Working Standards
+
+- **Never assume — always validate.** Do not assume framework behavior, API signatures, config defaults, or version compatibility. Use tools, MCPs (Context7, web search), and direct code inspection to confirm facts before acting on them. If you cannot verify something, state the uncertainty explicitly.
+- **95%+ confidence threshold.** Before marking any task, TODO item, or deliverable as complete, your confidence that it is correct must exceed 95%. If confidence is below that threshold, run additional validation (tests, static analysis, manual inspection) until it is met or report what is blocking full confidence.
+- **Decompose complex tasks with Sequential Thinking.** When a task involves more than 3 non-trivial steps, use the Sequential Thinking MCP (`sequentialthinking/*`) to break it into smaller, verifiable sub-tasks before beginning implementation. Each sub-task should be independently testable.

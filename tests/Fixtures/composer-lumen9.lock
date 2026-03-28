@@ -1,0 +1,8 @@
+{
+    "packages": [
+        {
+            "name": "laravel/lumen-framework",
+            "version": "v9.4.2"
+        }
+    ]
+}

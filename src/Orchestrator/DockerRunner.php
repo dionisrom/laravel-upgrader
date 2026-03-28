@@ -30,21 +30,39 @@ final class DockerRunner
     /**
      * Builds the docker run command array for a given hop.
      *
+     * The host MUST copy the input workspace into $outputPath before calling
+     * this method. The container receives $outputPath as /repo and transforms
+     * files in-place there; on exit the populated $outputPath becomes the next
+     * hop's input workspace. $workspacePath is the original pre-hop snapshot
+     * retained by the host for report diffing and is NOT mounted.
+     *
      * @return list<string>
      */
-    public function buildCommand(Hop $hop, string $workspacePath, string $outputPath): array
+    public function buildCommand(Hop $hop, string $workspacePath, string $outputPath, ?UpgradeOptions $options = null): array
     {
-        return [
+        $cmd = [
             $this->dockerBin,
             'run', '--rm',
             '--network=none',
-            '-v', "{$workspacePath}:/repo:rw",
-            '-v', "{$outputPath}:/output:rw",
+            '-v', "{$outputPath}:/repo:rw",
             '--env', "UPGRADER_HOP_FROM={$hop->fromVersion}",
             '--env', "UPGRADER_HOP_TO={$hop->toVersion}",
             '--env', 'UPGRADER_WORKSPACE=/repo',
-            $hop->dockerImage,
         ];
+
+        if ($options?->skipPhpstan) {
+            $cmd[] = '--env';
+            $cmd[] = 'UPGRADER_SKIP_PHPSTAN=1';
+        }
+
+        if ($options?->withArtisanVerify) {
+            $cmd[] = '--env';
+            $cmd[] = 'UPGRADER_WITH_ARTISAN_VERIFY=1';
+        }
+
+        $cmd[] = $hop->dockerImage;
+
+        return $cmd;
     }
 
     /**
@@ -58,8 +76,9 @@ final class DockerRunner
         string $workspacePath,
         string $outputPath,
         EventStreamer $streamer,
+        ?UpgradeOptions $options = null,
     ): void {
-        $command = $this->buildCommand($hop, $workspacePath, $outputPath);
+        $command = $this->buildCommand($hop, $workspacePath, $outputPath, $options);
 
         $process = $this->processFactory !== null
             ? ($this->processFactory)($command)
@@ -145,6 +164,41 @@ final class DockerRunner
         }
 
         /** @var array<string, mixed> $decoded */
-        $streamer->dispatch($decoded);
+        $streamer->dispatch($this->normalizeEvent($decoded));
+    }
+
+    /**
+     * Normalise container-side events that still use a type/data envelope.
+     *
+     * @param array<string, mixed> $event
+     * @return array<string, mixed>
+     */
+    private function normalizeEvent(array $event): array
+    {
+        if (isset($event['event']) && is_string($event['event'])) {
+            return $event;
+        }
+
+        $type = $event['type'] ?? null;
+        if (!is_string($type) || $type === '') {
+            return $event;
+        }
+
+        $data = is_array($event['data'] ?? null) ? $event['data'] : [];
+        $normalizedEvent = str_replace('.', '_', $type);
+
+        if ($normalizedEvent === 'manual_review_required' && isset($data['file']) && !isset($data['files'])) {
+            $data['files'] = [(string) $data['file']];
+        }
+
+        if ($normalizedEvent === 'manual_review_required' && isset($data['detail']) && !isset($data['reason'])) {
+            $data['reason'] = (string) $data['detail'];
+        }
+
+        if ($normalizedEvent === 'manual_review_required' && isset($data['pattern']) && !isset($data['id'])) {
+            $data['id'] = (string) $data['pattern'];
+        }
+
+        return array_merge($event, $data, ['event' => $normalizedEvent]);
     }
 }

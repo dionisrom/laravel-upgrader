@@ -15,17 +15,33 @@ use Rector\Config\RectorConfig;
 use RectorLaravel\Set\LaravelSetList;
 
 // Custom gap-fill rules
-use Upgrader\Rector\Rules\L8ToL9\HttpKernelMiddlewareRector;
-use Upgrader\Rector\Rules\L8ToL9\ModelUnguardRector;
-use Upgrader\Rector\Rules\L8ToL9\PasswordRuleRector;
-use Upgrader\Rector\Rules\L8ToL9\WhereNotToWhereNotInRector;
+use AppContainer\Rector\Rules\L8ToL9\HttpKernelMiddlewareRector;
 
-return RectorConfig::configure()
-    ->withPaths(['/workspace'])
-    ->withSkipPath('/workspace/vendor')
-    ->withSkipPath('/workspace/storage')
-    ->withSkipPath('/workspace/bootstrap/cache')
-    ->withSkipPath('/workspace/node_modules')
+use AppContainer\Rector\PackageRuleActivator;
+use AppContainer\Rector\PackageVersionMatrix;
+
+require_once __DIR__ . '/workspace-skip-paths.php';
+
+$workspacePath = getenv('UPGRADER_WORKSPACE') ?: '/repo';
+
+// ── Package-aware rule activation ─────────────────────────────────────────────
+$packageRules = [];
+$composerLockPath = $workspacePath . '/composer.lock';
+$packageRulesConfigDir = getenv('UPGRADER_PACKAGE_RULES_DIR') ?: '/upgrader/docs';
+
+if (is_file($composerLockPath) && is_dir($packageRulesConfigDir)) {
+    $activator = new PackageRuleActivator(new PackageVersionMatrix($packageRulesConfigDir));
+    $packageRules = $activator->activate($composerLockPath, '8-to-9');
+}
+
+$config = RectorConfig::configure()
+    ->withPaths([$workspacePath]);
+
+foreach (upgraderWorkspaceSkipPaths($workspacePath) as $skipPath) {
+    $config = $config->withSkipPath($skipPath);
+}
+
+return $config
 
     // ── Upstream rector-laravel L9 set ────────────────────────────────────────
     ->withSets([
@@ -33,12 +49,9 @@ return RectorConfig::configure()
     ])
 
     // ── Custom gap-fill rules ─────────────────────────────────────────────────
-    ->withRules([
+    ->withRules(array_merge([
         HttpKernelMiddlewareRector::class,
-        ModelUnguardRector::class,
-        PasswordRuleRector::class,
-        WhereNotToWhereNotInRector::class,
-    ])
+    ], $packageRules))
 
     ->withParallel()
-    ->withImportNames(importDocBlockClassNames: false);
+    ->withImportNames(importDocBlockNames: false);

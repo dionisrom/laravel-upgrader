@@ -96,6 +96,30 @@ final class ConfidenceScorerTest extends TestCase
         $this->assertSame('Low',    $this->scorer->label(0));
     }
 
+    public function testFileScoreHighForCleanFile(): void
+    {
+        $data = $this->makeData();
+        $this->assertSame(100, $this->scorer->fileScore('app/Clean.php', $data));
+        $this->assertSame('High', $this->scorer->label($this->scorer->fileScore('app/Clean.php', $data)));
+    }
+
+    public function testFileScoreLowForManualReviewFile(): void
+    {
+        $items = [
+            ['id' => 'RULE-1', 'automated' => false, 'reason' => 'Needs review', 'files' => ['app/Foo.php']],
+        ];
+        $data = $this->makeData(manualReviewItems: $items);
+        $score = $this->scorer->fileScore('app/Foo.php', $data);
+        $this->assertSame(40, $score);
+        $this->assertSame('Low', $this->scorer->label($score));
+    }
+
+    public function testFileScoreZeroOnSyntaxError(): void
+    {
+        $data = $this->makeData(hasSyntaxError: true);
+        $this->assertSame(0, $this->scorer->fileScore('app/Any.php', $data));
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

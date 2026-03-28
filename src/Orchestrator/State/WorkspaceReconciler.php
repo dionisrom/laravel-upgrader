@@ -29,6 +29,12 @@ final class WorkspaceReconciler
             );
         }
 
+        if (!$checkpoint->canResume) {
+            throw new CheckpointNotResumableException(
+                "Checkpoint for hop '{$checkpoint->hop}' is marked as not resumable due to an inconsistent state. Run without --resume to start a fresh upgrade."
+            );
+        }
+
         $modifiedFiles = [];
         $workspacePath = rtrim($workspacePath, '/\\');
 

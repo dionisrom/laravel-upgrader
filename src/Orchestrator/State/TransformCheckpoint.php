@@ -42,6 +42,7 @@ final class TransformCheckpoint implements CheckpointManagerInterface
         array $completedRules,
         array $pendingRules,
         array $filesHashed,
+        bool $canResume = true,
     ): void {
         // Validate that file paths in filesHashed are relative
         foreach (array_keys($filesHashed) as $relativePath) {
@@ -62,7 +63,7 @@ final class TransformCheckpoint implements CheckpointManagerInterface
             pendingRules: array_values($pendingRules),
             filesHashed: $filesHashed,
             timestamp: (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
-            canResume: true,
+            canResume: $canResume,
             hostVersion: $this->hostVersion,
         );
 
@@ -137,7 +138,9 @@ final class TransformCheckpoint implements CheckpointManagerInterface
 
         $hopKey = "{$hop->fromVersion}_to_{$hop->toVersion}";
 
-        return $checkpoint->hop === $hopKey && $checkpoint->canResume;
+        return $checkpoint->hop === $hopKey
+            && $checkpoint->canResume
+            && $checkpoint->pendingRules === [];
     }
 
     /**

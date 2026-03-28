@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Rector;
 
-final readonly class RectorError
+final class RectorError
 {
     public function __construct(
         public readonly string $file,

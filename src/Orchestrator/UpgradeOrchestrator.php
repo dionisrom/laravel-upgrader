@@ -31,7 +31,9 @@ final class UpgradeOrchestrator
         string $repoPath,
         string $fromVersion,
         string $toVersion,
+        ?UpgradeOptions $options = null,
     ): OrchestratorResult {
+        $options ??= new UpgradeOptions();
         $runId = Uuid::uuid4()->toString();
 
         try {
@@ -87,8 +89,21 @@ final class UpgradeOrchestrator
 
             $collector->reset();
 
+            if ($options->dryRun) {
+                $this->streamer->dispatch([
+                    'event' => 'hop_dry_run',
+                    'hop'   => $hopKey,
+                    'ts'    => time(),
+                ]);
+
+                /** @var list<array<string, mixed>> $hopEvents */
+                $hopEvents = $collector->getEvents();
+                $allEvents = array_values(array_merge($allEvents, $hopEvents));
+                continue;
+            }
+
             try {
-                $this->dockerRunner->run($hop, $workspace, $outputPath, $this->streamer);
+                $this->dockerRunner->run($hop, $workspace, $outputPath, $this->streamer, $options);
             } catch (HopFailureException $e) {
                 throw new OrchestratorException(
                     sprintf(

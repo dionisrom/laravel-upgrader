@@ -1,0 +1,133 @@
+##
+## Laravel Enterprise Upgrader — GitLab CI pipeline
+##
+## Setup:
+##   1. Copy this file to .gitlab-ci.yml in your repository (or include from a shared location).
+##   2. Add UPGRADER_TOKEN as a masked CI/CD variable (Settings → CI/CD → Variables).
+##   3. For auto-upgrade mode, also add CI_PUSH_TOKEN (a project access token with
+##      'write_repository' scope) as a masked CI/CD variable.
+##
+## Trigger: CI/CD → Pipelines → Run pipeline (manual jobs)
+##
+
+stages:
+  - upgrade
+
+variables:
+  UPGRADER_IMAGE: "{{IMAGE}}"
+  REPORT_DIR: ".upgrader/reports"
+  FROM_VERSION: "{{FROM_VERSION}}"
+  TO_VERSION: "{{TO_VERSION}}"
+  UPGRADE_MODE: "{{DEFAULT_MODE}}"   # dry-run | auto-upgrade
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_DRIVER: "overlay2"
+
+# ── Shared config ──────────────────────────────────────────────────────────────
+.upgrade_base:
+  stage: upgrade
+  image: docker:24
+  services:
+    - docker:24-dind
+  cache:
+    key: upgrader-image-${UPGRADER_IMAGE}
+    paths:
+      - .cache/upgrader-image.tar
+    policy: pull-push
+  before_script:
+    - mkdir -p .cache
+    - |
+      if [ -f ".cache/upgrader-image.tar" ]; then
+        echo "Loading cached upgrader image..."
+        docker load -i .cache/upgrader-image.tar
+      else
+        echo "Pulling upgrader image..."
+        docker pull "$UPGRADER_IMAGE"
+        docker save "$UPGRADER_IMAGE" -o .cache/upgrader-image.tar
+      fi
+  script:
+    - |
+      EXTRA_FLAGS=""
+      if [ "$UPGRADE_MODE" = "dry-run" ]; then
+        EXTRA_FLAGS="--dry-run"
+      fi
+
+      docker run --rm \
+        --network=none \
+        -v "$CI_PROJECT_DIR:/workspace" \
+        -e UPGRADER_TOKEN="$UPGRADER_TOKEN" \
+        "$UPGRADER_IMAGE" upgrade \
+        --from="$FROM_VERSION" \
+        --to="$TO_VERSION" \
+        --output="/workspace/$REPORT_DIR" \
+        ${EXTRA_FLAGS}
+
+    - |
+      if [ "$UPGRADE_MODE" = "auto-upgrade" ]; then
+        BRANCH="upgrade/l${FROM_VERSION}-to-l${TO_VERSION}"
+
+        git config user.email "ci@${CI_SERVER_HOST}"
+        git config user.name "GitLab CI"
+
+        git remote set-url origin \
+          "https://oauth2:${CI_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+
+        git checkout -b "$BRANCH" || git checkout "$BRANCH"
+        git add -A
+
+        if git diff --cached --quiet; then
+          echo "No changes to commit."
+        else
+          git commit -m "chore: upgrade Laravel ${FROM_VERSION} to ${TO_VERSION}"
+          git push origin "$BRANCH"
+
+          # Create a merge request via the GitLab API
+          curl -s --fail-with-body \
+            --header "PRIVATE-TOKEN: ${CI_PUSH_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{
+              \"source_branch\": \"${BRANCH}\",
+              \"target_branch\": \"${CI_DEFAULT_BRANCH}\",
+              \"title\": \"Laravel ${FROM_VERSION} to ${TO_VERSION} upgrade\",
+              \"description\": \"Automated upgrade by Laravel Enterprise Upgrader. Review the job artifact before merging.\",
+              \"remove_source_branch\": true
+            }" \
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/merge_requests"
+        fi
+      fi
+
+    # Post diff summary as MR note in dry-run mode
+    - |
+      if [ "$UPGRADE_MODE" = "dry-run" ] && [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        REPORT_FILE="${CI_PROJECT_DIR}/${REPORT_DIR}/summary.md"
+        if [ -f "$REPORT_FILE" ]; then
+          BODY=$(cat "$REPORT_FILE" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
+          curl -s --fail-with-body \
+            --header "PRIVATE-TOKEN: ${CI_PUSH_TOKEN}" \
+            --header "Content-Type: application/json" \
+            --data "{\"body\": ${BODY}}" \
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/merge_requests/${CI_MERGE_REQUEST_IID}/notes"
+        fi
+      fi
+  artifacts:
+    when: always
+    paths:
+      - $REPORT_DIR/
+    expire_in: 30 days
+
+# ── Jobs ───────────────────────────────────────────────────────────────────────
+
+upgrade:dry-run:
+  extends: .upgrade_base
+  variables:
+    UPGRADE_MODE: "dry-run"
+  rules:
+    - when: manual
+      allow_failure: false
+
+upgrade:auto:
+  extends: .upgrade_base
+  variables:
+    UPGRADE_MODE: "auto-upgrade"
+  rules:
+    - when: manual
+      allow_failure: false

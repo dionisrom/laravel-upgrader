@@ -10,6 +10,12 @@ use Symfony\Component\Process\Process;
 
 final class LocalRepositoryFetcher implements RepositoryFetcherInterface
 {
+    private const CONCURRENT_UPGRADE_MESSAGE = 'An upgrade is already running for this repository. Use --resume to continue it, or wait for it to complete.';
+
+    public function __construct(private readonly ?\Closure $processFactory = null)
+    {
+    }
+
     public function fetch(string $source, string $targetPath, ?string $token = null): FetchResult
     {
         if (!is_dir($source)) {
@@ -18,17 +24,22 @@ final class LocalRepositoryFetcher implements RepositoryFetcherInterface
 
         [$lockFile, $lockHandle] = $this->acquireLock($source);
 
-        $this->copyDirectory($source, $targetPath);
+        try {
+            $this->copyDirectory($source, $targetPath);
 
-        $defaultBranch = $this->resolveDefaultBranch($targetPath);
-        $commitSha = $this->resolveCommitSha($targetPath);
+            $defaultBranch = $this->resolveDefaultBranch($targetPath);
+            $commitSha = $this->resolveCommitSha($targetPath);
 
-        return new FetchResult(
-            workspacePath: $targetPath,
-            lockFilePath: $lockFile,
-            defaultBranch: $defaultBranch,
-            resolvedCommitSha: $commitSha,
-        );
+            return new FetchResult(
+                workspacePath: $targetPath,
+                lockFilePath: $lockFile,
+                defaultBranch: $defaultBranch,
+                resolvedCommitSha: $commitSha,
+            );
+        } finally {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+        }
     }
 
     /**
@@ -50,9 +61,7 @@ final class LocalRepositoryFetcher implements RepositoryFetcherInterface
 
         if (!flock($fh, LOCK_EX | LOCK_NB)) {
             fclose($fh);
-            throw new ConcurrentUpgradeException(
-                "Another upgrade is already running for this repository."
-            );
+            throw new ConcurrentUpgradeException(self::CONCURRENT_UPGRADE_MESSAGE);
         }
 
         return [$lockFile, $fh];
@@ -64,7 +73,7 @@ final class LocalRepositoryFetcher implements RepositoryFetcherInterface
             mkdir($target, 0755, true);
         }
 
-        $process = new Process(['git', 'clone', '--local', '--no-hardlinks', $source, $target]);
+        $process = $this->createProcess(['git', 'clone', '--local', '--no-hardlinks', $source, $target]);
         $process->setTimeout(120);
         $process->run();
 
@@ -95,7 +104,7 @@ final class LocalRepositoryFetcher implements RepositoryFetcherInterface
 
     private function resolveDefaultBranch(string $repoPath): string
     {
-        $process = new Process(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], $repoPath);
+        $process = $this->createProcess(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], $repoPath);
         $process->setTimeout(30);
         $process->run();
 
@@ -108,7 +117,7 @@ final class LocalRepositoryFetcher implements RepositoryFetcherInterface
 
     private function resolveCommitSha(string $repoPath): string
     {
-        $process = new Process(['git', 'rev-parse', 'HEAD'], $repoPath);
+        $process = $this->createProcess(['git', 'rev-parse', 'HEAD'], $repoPath);
         $process->setTimeout(30);
         $process->run();
 
@@ -117,5 +126,14 @@ final class LocalRepositoryFetcher implements RepositoryFetcherInterface
         }
 
         return 'unknown';
+    }
+
+    private function createProcess(array $command, ?string $cwd = null): Process
+    {
+        if ($this->processFactory !== null) {
+            return ($this->processFactory)($command, $cwd);
+        }
+
+        return new Process($command, $cwd);
     }
 }

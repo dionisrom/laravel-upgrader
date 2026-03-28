@@ -130,7 +130,24 @@ final class HandlerClassVisitor extends NodeVisitorAbstract
     /** @var LumenManualReviewItem[] */
     public array $manualReviewItems = [];
 
+    /** @var array<string, string> alias → fully-qualified name from use statements */
+    private array $useMap = [];
+
     public function __construct(private readonly string $file) {}
+
+    public function enterNode(Node $node): Node|null
+    {
+        // Collect use imports to resolve aliases
+        if ($node instanceof Node\Stmt\Use_) {
+            foreach ($node->uses as $use) {
+                $fqn = $use->name->toString();
+                $alias = $use->getAlias()->name;
+                $this->useMap[$alias] = $fqn;
+            }
+        }
+
+        return null;
+    }
 
     public function leaveNode(Node $node): Node|null
     {
@@ -141,8 +158,13 @@ final class HandlerClassVisitor extends NodeVisitorAbstract
         // Replace parent class reference
         if ($node->extends !== null) {
             $parentName = $node->extends->toString();
-            if ($parentName === 'Handler' ||
-                str_ends_with($parentName, 'Lumen\\Exceptions\\Handler')) {
+
+            // Resolve through use-statement aliases
+            $resolved = $this->useMap[$parentName] ?? $parentName;
+
+            if ($resolved === 'Handler' ||
+                str_ends_with($resolved, 'Lumen\\Exceptions\\Handler') ||
+                str_ends_with($resolved, 'Lumen\Exceptions\Handler')) {
                 $node->extends = new Node\Name\FullyQualified(
                     'Illuminate\\Foundation\\Exceptions\\Handler'
                 );

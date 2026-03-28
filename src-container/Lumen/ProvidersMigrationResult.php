@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class ProvidersMigrationResult
+final class ProvidersMigrationResult
 {
     /**
      * @param string[] $migratedProviders  fully-qualified class names registered

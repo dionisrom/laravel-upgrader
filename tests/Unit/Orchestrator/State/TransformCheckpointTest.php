@@ -84,6 +84,18 @@ final class TransformCheckpointTest extends TestCase
         $this->assertNull($result);
     }
 
+    public function testReadThrowsOnCorruptedJson(): void
+    {
+        $stateDir = $this->tempDir . DIRECTORY_SEPARATOR . '.upgrader-state';
+        mkdir($stateDir, 0755, true);
+        file_put_contents($stateDir . DIRECTORY_SEPARATOR . 'checkpoint.json', '{corrupted json!!!');
+
+        $tc = new TransformCheckpoint($this->tempDir);
+
+        $this->expectException(\JsonException::class);
+        $tc->read();
+    }
+
     public function testClearDeletesCheckpointFile(): void
     {
         $tc = new TransformCheckpoint($this->tempDir);
@@ -128,6 +140,22 @@ final class TransformCheckpointTest extends TestCase
         $this->assertFalse($tc->isCompleted($hop));
     }
 
+    public function testIsCompletedReturnsFalseWhenPendingRulesExist(): void
+    {
+        $tc = new TransformCheckpoint($this->tempDir);
+        $tc->write(hop: '8_to_9', completedRules: ['App\\Rules\\A'], pendingRules: ['App\\Rules\\B'], filesHashed: []);
+
+        $hop = new Hop(
+            dockerImage: 'laravel-upgrader/hop-8-to-9',
+            fromVersion: '8',
+            toVersion: '9',
+            type: 'laravel',
+            phpBase: null,
+        );
+
+        $this->assertFalse($tc->isCompleted($hop));
+    }
+
     public function testIsCompletedReturnsFalseForDifferentHop(): void
     {
         $tc = new TransformCheckpoint($this->tempDir);
@@ -160,6 +188,22 @@ final class TransformCheckpointTest extends TestCase
         $tc->markCompleted($hop);
 
         $this->assertNull($tc->read());
+    }
+
+    public function testWriteCanResumeFalseRoundTrips(): void
+    {
+        $tc = new TransformCheckpoint($this->tempDir);
+        $tc->write(
+            hop: '8_to_9',
+            completedRules: ['App\\Rules\\A'],
+            pendingRules: ['App\\Rules\\B'],
+            filesHashed: [],
+            canResume: false,
+        );
+
+        $result = $tc->read();
+        $this->assertNotNull($result);
+        $this->assertFalse($result->canResume);
     }
 
     public function testWriteThrowsForAbsolutePaths(): void

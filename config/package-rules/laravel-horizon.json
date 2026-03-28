@@ -1,0 +1,33 @@
+{
+  "package": "laravel/horizon",
+  "description": "Laravel Horizon migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^5.0",
+      "to_constraint": "^5.0",
+      "rules": [],
+      "notes": "Horizon V5 config balancing strategy changes are config-level only"
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^5.0",
+      "to_constraint": "^5.0",
+      "rules": [],
+      "notes": "Horizon V5 supports Laravel 9-13. No auto-fixable PHP AST transforms."
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^5.0",
+      "to_constraint": "^5.0",
+      "rules": []
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^5.0",
+      "to_constraint": "^5.0",
+      "rules": []
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^5.0",
+      "to_constraint": "^5.0",
+      "rules": []
+    }
+  }
+}

@@ -1,0 +1,6 @@
+#0 building with "upgrader-builder" instance using docker-container driver
+
+#1 [internal] load local bake definitions
+#1 reading docker-bake.hcl 6.91kB / 6.91kB done
+#1 DONE 0.0s
+ERROR: docker exporter does not currently support exporting manifest lists

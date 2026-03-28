@@ -255,11 +255,16 @@ final class HtmlFormatter
             $ruleIds = implode(' ', array_map(fn(string $r) => 'diff-' . $this->e($r), $diffItem['rules']));
             $diff    = htmlspecialchars($diffItem['diff'], ENT_NOQUOTES, 'UTF-8');
 
-            $ruleAttr = $this->e(implode(',', $diffItem['rules']));
+            $ruleAttr   = $this->e(implode(',', $diffItem['rules']));
+            $fileScore  = $this->scorer->fileScore($diffItem['file'], $data);
+            $fileLabel  = $this->scorer->label($fileScore);
+            $fileBadge  = $this->badgeClass($fileLabel);
+
             $html .= <<<HTML
             <div class="file-diff-block" id="diff-{$file}">
               <div class="file-diff-header">
                 <span class="filename">{$file}</span>
+                <span class="badge {$fileBadge}">{$fileScore}% — {$this->e($fileLabel)}</span>
                 <span class="rules">Rules: {$rules}</span>
               </div>
               <pre class="unified-diff" data-file="{$file}" data-rules="{$ruleAttr}">{$diff}</pre>
@@ -282,7 +287,7 @@ final class HtmlFormatter
             $reason = $this->e($item['reason']);
             $files  = implode(', ', array_map(fn(string $f) => "<code>{$this->e($f)}</code>", $item['files']));
 
-            $isBlocker   = stripos($item['id'], 'BLOCKER') !== false || stripos($item['reason'], 'incompatible') !== false;
+            $isBlocker   = str_starts_with($item['id'], 'BC-') || stripos($item['id'], 'BLOCKER') !== false || stripos($item['reason'], 'incompatible') !== false;
             $extraClass  = $isBlocker ? ' blocker' : '';
             $badgeClass  = $isBlocker ? 'badge-low' : 'badge-review';
             $badgeLabel  = $isBlocker ? 'BLOCKER' : 'REVIEW';

@@ -58,21 +58,20 @@ final class VersionDetectorTest extends TestCase
 
     public function testDetectsLumenVersionFromLumenPackage(): void
     {
-        $workspace = $this->tempDir . '/lumen-workspace';
-        mkdir($workspace, 0777, true);
-
-        file_put_contents(
-            $workspace . '/composer.lock',
-            json_encode([
-                'packages' => [
-                    ['name' => 'laravel/lumen-framework', 'version' => 'v8.3.4'],
-                ],
-            ])
-        );
+        $workspace = $this->buildWorkspaceFromFixture('composer-lumen8.lock');
 
         $version = $this->detector->detectLaravelVersion($workspace);
 
         self::assertSame('8.3.4', $version);
+    }
+
+    public function testDetectsLumen9VersionFromFixture(): void
+    {
+        $workspace = $this->buildWorkspaceFromFixture('composer-lumen9.lock');
+
+        $version = $this->detector->detectLaravelVersion($workspace);
+
+        self::assertSame('9.4.2', $version);
     }
 
     public function testThrowsInvalidHopExceptionForLaravel10(): void

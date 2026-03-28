@@ -1,0 +1,33 @@
+{
+  "package": "laravel/nova",
+  "description": "Laravel Nova migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "Nova V4 API changes are additive. No auto-fixable PHP AST transforms."
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "No breaking changes"
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": []
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": []
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": []
+    }
+  }
+}

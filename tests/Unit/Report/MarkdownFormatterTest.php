@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Report;
 
+use AppContainer\Report\ConfidenceScorer;
 use AppContainer\Report\Formatters\MarkdownFormatter;
 use AppContainer\Report\ReportData;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +16,7 @@ final class MarkdownFormatterTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->formatter = new MarkdownFormatter();
+        $this->formatter = new MarkdownFormatter(new ConfidenceScorer());
     }
 
     public function testFormatContainsHeader(): void
@@ -62,6 +63,35 @@ final class MarkdownFormatterTest extends TestCase
         $data   = $this->makeData();
         $output = $this->formatter->format($data);
         $this->assertStringContainsString('No manual review required', $output);
+    }
+
+    public function testCodeSnippetRenderedWhenPresent(): void
+    {
+        $items = [
+            [
+                'id' => 'BC-002',
+                'automated' => false,
+                'reason' => 'Incompatible call',
+                'files' => ['app/Bar.php'],
+                'snippet' => '$model->getOriginal()',
+            ],
+        ];
+        $data   = $this->makeData(manualReviewItems: $items);
+        $output = $this->formatter->format($data);
+
+        $this->assertStringContainsString('```php', $output);
+        $this->assertStringContainsString('$model->getOriginal()', $output);
+    }
+
+    public function testNoSnippetBlockWhenSnippetAbsent(): void
+    {
+        $items = [
+            ['id' => 'WARN-1', 'automated' => false, 'reason' => 'Soft deprecation', 'files' => ['app/A.php']],
+        ];
+        $data   = $this->makeData(manualReviewItems: $items);
+        $output = $this->formatter->format($data);
+
+        $this->assertStringNotContainsString('```php', $output);
     }
 
     // -----------------------------------------------------------------------

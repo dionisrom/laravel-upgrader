@@ -1,0 +1,35 @@
+{
+    "name": "acme/fixture-minimal",
+    "description": "Minimal Laravel 8 fixture — baseline upgrade test (no extra packages).",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.0",
+        "laravel/framework": "^8.75"
+    },
+    "require-dev": {
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

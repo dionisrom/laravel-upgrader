@@ -1,0 +1,20 @@
+{
+    "name": "upgrader/lumen-warmup",
+    "description": "Composer cache warmup for Lumen → Laravel 9 migration. Used at Docker build time only — populates the Composer HTTP cache so DependencyUpgrader can run composer install offline (--network=none) at container runtime.",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "laravel/framework": "^9.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "audit": {
+            "abandoned": "ignore",
+            "ignore": {},
+            "block-insecure": false
+        }
+    }
+}

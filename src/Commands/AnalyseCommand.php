@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
+use App\Composer\LaravelVersionDetector;
 use App\Orchestrator\AuditLogWriter;
 use App\Orchestrator\DockerRunner;
 use App\Orchestrator\EventStreamer;
 use App\Orchestrator\HopPlanner;
 use App\Orchestrator\OrchestratorException;
 use App\Orchestrator\TerminalRenderer;
+use App\Orchestrator\UpgradeOptions;
 use App\Orchestrator\UpgradeOrchestrator;
 use App\Repository\RepositoryFetcherFactory;
 use App\Workspace\WorkspaceManager;
@@ -77,7 +79,7 @@ final class AnalyseCommand extends Command
 
         /** @var string $repo */
         $repo      = (string) $input->getOption('repo');
-        $from      = $input->getOption('from') !== null ? (string) $input->getOption('from') : '8';
+        $from      = $input->getOption('from') !== null ? (string) $input->getOption('from') : null;
         $to        = (string) $input->getOption('to');
         $outputDir = (string) $input->getOption('output');
 
@@ -88,7 +90,7 @@ final class AnalyseCommand extends Command
                 RunCommand::VERSION,
                 str_repeat('═', 38),
                 $this->redactor->redact($repo),
-                $from,
+                $from ?? 'auto-detect',
                 $to,
                 rtrim($outputDir, '/'),
             ));
@@ -108,7 +110,7 @@ final class AnalyseCommand extends Command
 
         $logPath = rtrim($outputDir, '/') . '/audit.jsonnd';
         $repoSha = substr(hash('sha256', $repo . time()), 0, 12);
-        $streamer->addConsumer(new AuditLogWriter($logPath, uniqid('analyse-', true), $repoSha));
+        $streamer->addConsumer(new AuditLogWriter($logPath, uniqid('analyse-', true), $repoSha, $this->getApplication()?->getVersion() ?? 'unknown'));
 
         // 6. Fetch repository
         $factory = new RepositoryFetcherFactory();
@@ -127,12 +129,19 @@ final class AnalyseCommand extends Command
             return Command::FAILURE;
         }
 
-        // 7. Run orchestrator in dry-run mode (no writeBack)
-        // Dry-run: pass a WorkspaceManager that never writes back by using a
-        // custom subclass — but since WorkspaceManager is final, we instantiate
-        // normally and the orchestrator will skip writeBack because $anyHopRan
-        // stays false when --dry-run prevents the Docker step.
-        // For Phase 1, dry-run just analyses without running Docker hops.
+        // 6b. Auto-detect --from version if not provided
+        if ($from === null) {
+            $detector = new LaravelVersionDetector();
+            $detected = $detector->detect($fetchResult->workspacePath);
+            if ($detected === null) {
+                $safeOutput->writeln('<error>Could not auto-detect Laravel version from composer.lock. Please specify --from explicitly.</error>');
+                return Command::INVALID;
+            }
+            $from = $detected;
+            $safeOutput->writeln(sprintf('<info>Auto-detected source version: Laravel %s</info>', $from));
+        }
+
+        // 7. Run orchestrator in dry-run mode (no Docker hops, no writeBack)
         $workspaceManager = new WorkspaceManager();
         $orchestrator = new UpgradeOrchestrator(
             new HopPlanner(),
@@ -144,7 +153,7 @@ final class AnalyseCommand extends Command
         $safeOutput->writeln('<info>Running analysis (dry-run, no transforms will be applied)...</info>');
 
         try {
-            $orchestrator->run($fetchResult->workspacePath, $from, $to);
+            $orchestrator->run($fetchResult->workspacePath, $from, $to, new UpgradeOptions(dryRun: true));
         } catch (OrchestratorException $e) {
             $safeOutput->writeln(sprintf('<error>Analysis failed: %s</error>', $this->redactor->redact($e->getMessage())));
             return Command::FAILURE;

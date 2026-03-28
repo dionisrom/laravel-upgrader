@@ -7,6 +7,7 @@ namespace Tests\Unit\Verification;
 use AppContainer\Verification\StaticArtisanVerifier;
 use AppContainer\Verification\VerificationContext;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Process;
 
 final class StaticArtisanVerifierTest extends TestCase
 {
@@ -106,12 +107,100 @@ final class StaticArtisanVerifierTest extends TestCase
         self::assertGreaterThan(0, $result->issueCount);
     }
 
+    public function testPassesWhenConfigReturnsArrayAfterOtherStatements(): void
+    {
+        file_put_contents(
+            $this->tmpDir . '/config/database.php',
+            '<?php $default = "mysql"; return ["default" => $default, "connections" => []];',
+        );
+
+        $ctx    = new VerificationContext(workspacePath: $this->tmpDir);
+        $result = (new StaticArtisanVerifier())->verify($this->tmpDir, $ctx);
+
+        self::assertTrue($result->passed);
+        self::assertSame(0, $result->issueCount);
+    }
+
     public function testVerifierNameIsCorrect(): void
     {
         $ctx    = new VerificationContext(workspacePath: $this->tmpDir);
         $result = (new StaticArtisanVerifier())->verify($this->tmpDir, $ctx);
 
         self::assertSame('StaticArtisanVerifier', $result->verifierName);
+    }
+
+    public function testArtisanVerifyNotRunByDefault(): void
+    {
+        $called  = 0;
+        $factory = function (array $cmd, string $cwd) use (&$called): Process {
+            $called++;
+            $mock = $this->createMock(Process::class);
+            $mock->method('run')->willReturn(0);
+            $mock->method('getExitCode')->willReturn(0);
+            return $mock;
+        };
+
+        file_put_contents(
+            $this->tmpDir . '/config/app.php',
+            '<?php return ["name" => "Test"];',
+        );
+
+        $ctx    = new VerificationContext(workspacePath: $this->tmpDir, withArtisanVerify: false);
+        $result = (new StaticArtisanVerifier($factory))->verify($this->tmpDir, $ctx);
+
+        self::assertTrue($result->passed);
+        self::assertSame(0, $called);
+    }
+
+    public function testArtisanVerifyRunsWhenOptedIn(): void
+    {
+        $commands = [];
+        $factory  = function (array $cmd, string $cwd) use (&$commands): Process {
+            $commands[] = $cmd;
+            $mock = $this->createMock(Process::class);
+            $mock->method('run')->willReturn(0);
+            $mock->method('getExitCode')->willReturn(0);
+            return $mock;
+        };
+
+        file_put_contents(
+            $this->tmpDir . '/config/app.php',
+            '<?php return ["name" => "Test"];',
+        );
+
+        $ctx    = new VerificationContext(workspacePath: $this->tmpDir, withArtisanVerify: true);
+        $result = (new StaticArtisanVerifier($factory))->verify($this->tmpDir, $ctx);
+
+        self::assertTrue($result->passed);
+        self::assertCount(2, $commands);
+        self::assertContains('config:cache', $commands[0]);
+        self::assertContains('route:list', $commands[1]);
+    }
+
+    public function testArtisanVerifyFailureIsAdvisoryNotBlocking(): void
+    {
+        $factory = function (array $cmd, string $cwd): Process {
+            $mock = $this->createMock(Process::class);
+            $mock->method('run')->willReturn(1);
+            $mock->method('getExitCode')->willReturn(1);
+            $mock->method('getOutput')->willReturn('');
+            $mock->method('getErrorOutput')->willReturn('artisan error');
+            return $mock;
+        };
+
+        file_put_contents(
+            $this->tmpDir . '/config/app.php',
+            '<?php return ["name" => "Test"];',
+        );
+
+        $ctx    = new VerificationContext(workspacePath: $this->tmpDir, withArtisanVerify: true);
+        $result = (new StaticArtisanVerifier($factory))->verify($this->tmpDir, $ctx);
+
+        // Should still pass — artisan failures are warnings, not errors
+        self::assertTrue($result->passed);
+        self::assertGreaterThan(0, $result->issueCount);
+        $warnings = array_filter($result->issues, fn($i) => $i->severity === 'warning');
+        self::assertNotEmpty($warnings);
     }
 
     private function removeDirectory(string $dir): void

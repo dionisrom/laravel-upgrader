@@ -1,0 +1,106 @@
+{
+    "generated": "2026-03-22",
+    "hop": "9_to_10",
+    "packages": {
+        "spatie/laravel-permission": {
+            "support": true,
+            "recommended_version": "^5.11|^6.0",
+            "notes": "Spatie Permission v5.11+ supports Laravel 10. v6.0 is recommended for full compatibility. Run: composer require spatie/laravel-permission:^6.0"
+        },
+        "livewire/livewire": {
+            "support": true,
+            "recommended_version": "^2.12|^3.0",
+            "notes": "Livewire v2.12+ supports Laravel 10. Consider upgrading to Livewire v3 which was designed for Laravel 10+. Run: composer require livewire/livewire:^3.0"
+        },
+        "laravel/sanctum": {
+            "support": true,
+            "recommended_version": "^3.3",
+            "notes": "Sanctum v3.3+ required for Laravel 10. Run: composer require laravel/sanctum:^3.3"
+        },
+        "laravel/passport": {
+            "support": true,
+            "recommended_version": "^11.8",
+            "notes": "Passport v11.8+ required for Laravel 10 compatibility. Run: composer require laravel/passport:^11.8"
+        },
+        "laravel/horizon": {
+            "support": true,
+            "recommended_version": "^5.15",
+            "notes": "Horizon v5.15+ supports Laravel 10. No breaking changes for most applications."
+        },
+        "laravel/telescope": {
+            "support": true,
+            "recommended_version": "^4.14",
+            "notes": "Telescope v4.14+ supports Laravel 10. Re-publish assets after upgrade: php artisan telescope:publish"
+        },
+        "laravel/cashier-stripe": {
+            "support": true,
+            "recommended_version": "^14.12|^15.0",
+            "notes": "Cashier v14.12+ supports Laravel 10, v15 recommended. Run: composer require laravel/cashier:^15.0"
+        },
+        "barryvdh/laravel-debugbar": {
+            "support": true,
+            "recommended_version": "^3.8",
+            "notes": "Debugbar v3.8+ supports Laravel 10. Run: composer require barryvdh/laravel-debugbar:^3.8"
+        },
+        "spatie/laravel-medialibrary": {
+            "support": true,
+            "recommended_version": "^10.15|^11.0",
+            "notes": "MediaLibrary v10.15+ supports Laravel 10, v11 recommended. Run: composer require spatie/laravel-medialibrary:^11.0"
+        },
+        "spatie/laravel-activitylog": {
+            "support": true,
+            "recommended_version": "^4.7",
+            "notes": "laravel-activitylog v4.7+ required for Laravel 10. Run: composer require spatie/laravel-activitylog:^4.7"
+        },
+        "spatie/laravel-backup": {
+            "support": true,
+            "recommended_version": "^8.4",
+            "notes": "laravel-backup v8.4+ supports Laravel 10. Run: composer require spatie/laravel-backup:^8.4"
+        },
+        "tymon/jwt-auth": {
+            "support": true,
+            "recommended_version": "^2.0",
+            "notes": "jwt-auth v2.0 required for Laravel 10. Significant config changes from v1.x. Run: composer require tymon/jwt-auth:^2.0"
+        },
+        "maatwebsite/excel": {
+            "support": true,
+            "recommended_version": "^3.1.48",
+            "notes": "Laravel Excel v3.1.48+ supports Laravel 10. Run: composer require maatwebsite/excel:^3.1.48"
+        },
+        "laravel/scout": {
+            "support": true,
+            "recommended_version": "^10.0",
+            "notes": "Scout v10 required for Laravel 10. Run: composer require laravel/scout:^10.0"
+        },
+        "laravel/socialite": {
+            "support": true,
+            "recommended_version": "^5.6",
+            "notes": "Socialite v5.6+ supports Laravel 10. Run: composer require laravel/socialite:^5.6"
+        },
+        "filament/filament": {
+            "support": true,
+            "recommended_version": "^3.0",
+            "notes": "Filament v3 is designed for Laravel 10+. Major rewrite from v2. Run: composer require filament/filament:^3.0"
+        },
+        "inertiajs/inertia-laravel": {
+            "support": true,
+            "recommended_version": "^0.6.11|^1.0",
+            "notes": "Inertia Laravel v0.6.11+ supports Laravel 10. v1.0 recommended. Run: composer require inertiajs/inertia-laravel:^1.0"
+        },
+        "laravel/breeze": {
+            "support": true,
+            "recommended_version": "^1.20",
+            "notes": "Breeze v1.20+ supports Laravel 10. Run: composer require laravel/breeze:^1.20 --dev"
+        },
+        "laravel/jetstream": {
+            "support": true,
+            "recommended_version": "^3.0|^4.0",
+            "notes": "Jetstream v3+ supports Laravel 10. v4 recommended with latest Livewire/Inertia. Run: composer require laravel/jetstream:^4.0"
+        },
+        "spatie/laravel-query-builder": {
+            "support": true,
+            "recommended_version": "^5.5",
+            "notes": "Query builder v5.5+ supports Laravel 10. Run: composer require spatie/laravel-query-builder:^5.5"
+        }
+    }
+}

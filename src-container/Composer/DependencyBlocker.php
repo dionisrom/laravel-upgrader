@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Composer;
 
-final readonly class DependencyBlocker
+final class DependencyBlocker
 {
     public function __construct(
         public readonly string $package,

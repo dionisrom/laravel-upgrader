@@ -1,0 +1,88 @@
+PHPUnit 11.5.55 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.29
+Configuration: G:\dev\laravel-upgrader\phpunit.xml.dist
+
+EEEEE                                                               5 / 5 (100%)
+
+Time: 00:08.408, Memory: 10.00 MB
+
+There were 5 errors:
+
+1) Tests\E2E\Fixtures\FixtureApiTest::testApiFixtureRetainsApiPackagesAndWritesReport
+App\Orchestrator\OrchestratorException: Chain aborted: hop 8->9 failed with exit code 1. Last stderr: {"fatal_errors":["Unknown named parameter $importDocBlockClassNames"]}
+
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:141
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureApiTest.php:18
+
+Caused by
+App\Orchestrator\HopFailureException: Hop failed with exit code 1
+
+G:\dev\laravel-upgrader\src\Orchestrator\DockerRunner.php:108
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:139
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureApiTest.php:18
+
+2) Tests\E2E\Fixtures\FixtureLivewireTest::testLivewireFixtureTriggersV3MigrationPath
+App\Orchestrator\OrchestratorException: Chain aborted: hop 8->9 failed with exit code 1. Last stderr: {"fatal_errors":["Unknown named parameter $importDocBlockClassNames"]}
+
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:141
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureLivewireTest.php:18
+
+Caused by
+App\Orchestrator\HopFailureException: Hop failed with exit code 1
+
+G:\dev\laravel-upgrader\src\Orchestrator\DockerRunner.php:108
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:139
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureLivewireTest.php:18
+
+3) Tests\E2E\Fixtures\FixtureMinimalTest::testMinimalFixtureCompletesFullChainAndGeneratesUnifiedReport
+App\Orchestrator\OrchestratorException: Chain aborted: hop 8->9 failed with exit code 1. Last stderr: {"fatal_errors":["Unknown named parameter $importDocBlockClassNames"]}
+
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:141
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureMinimalTest.php:18
+
+Caused by
+App\Orchestrator\HopFailureException: Hop failed with exit code 1
+
+G:\dev\laravel-upgrader\src\Orchestrator\DockerRunner.php:108
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:139
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureMinimalTest.php:18
+
+4) Tests\E2E\Fixtures\FixtureModularTest::testModularFixturePreservesModuleStructureAcrossChain
+App\Orchestrator\OrchestratorException: Chain aborted: hop 8->9 failed with exit code 1. Last stderr: {"fatal_errors":["Unknown named parameter $importDocBlockClassNames"]}
+
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:141
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureModularTest.php:18
+
+Caused by
+App\Orchestrator\HopFailureException: Hop failed with exit code 1
+
+G:\dev\laravel-upgrader\src\Orchestrator\DockerRunner.php:108
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:139
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureModularTest.php:18
+
+5) Tests\E2E\Fixtures\FixtureMonolithTest::testMonolithFixtureKeepsEnterprisePackagesAligned
+App\Orchestrator\OrchestratorException: Chain aborted: hop 8->9 failed with exit code 1. Last stderr: {"fatal_errors":["Unknown named parameter $importDocBlockClassNames"]}
+
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:141
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureMonolithTest.php:18
+
+Caused by
+App\Orchestrator\HopFailureException: Hop failed with exit code 1
+
+G:\dev\laravel-upgrader\src\Orchestrator\DockerRunner.php:108
+G:\dev\laravel-upgrader\src\Orchestrator\ChainRunner.php:139
+G:\dev\laravel-upgrader\tests\E2E\E2ETestCase.php:198
+G:\dev\laravel-upgrader\tests\E2E\Fixtures\FixtureMonolithTest.php:18
+
+ERRORS!
+Tests: 5, Assertions: 0, Errors: 5.

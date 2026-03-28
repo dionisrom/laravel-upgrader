@@ -1,0 +1,141 @@
+{
+    "hop": "11-to-12",
+    "from_version": "11",
+    "to_version": "12",
+    "php_minimum": "8.2",
+    "generated": "2026-03-26",
+    "breaking_changes": [
+        {
+            "id": "l12_dependency_updates",
+            "title": "Updating dependencies (laravel/framework ^12.0, phpunit ^11.0)",
+            "description": "Update laravel/framework to ^12.0, phpunit/phpunit to ^11.0, and pestphp/pest to ^3.0 in composer.json.",
+            "severity": "high",
+            "type": "auto_fix",
+            "auto_fixable": true,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#updating-dependencies",
+            "affected_files": ["composer.json"]
+        },
+        {
+            "id": "l12_uuidv7_default",
+            "title": "HasUuids trait now returns UUIDv7",
+            "description": "The HasUuids trait now returns UUIDv7 (ordered UUIDs). To keep UUIDv4 behaviour, use HasVersion4Uuids trait instead. HasVersion7Uuids trait has been removed.",
+            "severity": "medium",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#models-and-uuidv7",
+            "affected_files": ["app/Models/**/*.php"]
+        },
+        {
+            "id": "l12_carbon_3",
+            "title": "Carbon 2 support removed, Carbon 3 required",
+            "description": "Support for Carbon 2.x has been removed. All Laravel 12 applications now require Carbon 3.x. Review DST handling and microsecond precision differences.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://carbon.nesbot.com/guide/getting-started/migration.html",
+            "affected_files": ["composer.json", "app/**/*.php"]
+        },
+        {
+            "id": "l12_concurrency_result_index_mapping",
+            "title": "Concurrency::run returns associative keys",
+            "description": "When invoking Concurrency::run with an associative array, results now include their associated keys instead of numeric indices.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#concurrency-result-index-mapping",
+            "affected_files": ["app/**/*.php"]
+        },
+        {
+            "id": "l12_container_class_dependency_resolution",
+            "title": "Container respects default property values",
+            "description": "The DI container now respects default values of class properties when resolving. Classes with nullable typed constructor params defaulting to null will now resolve to null instead of a concrete instance.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#container-class-dependency-resolution",
+            "affected_files": ["app/**/*.php"]
+        },
+        {
+            "id": "l12_image_validation_excludes_svg",
+            "title": "Image validation rule now excludes SVGs",
+            "description": "The 'image' validation rule no longer allows SVG images by default. Use 'image:allow_svg' or File::image(allowSvg: true) to restore SVG support.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#image-validation-now-excludes-svgs",
+            "affected_files": ["app/Http/Requests/**/*.php", "app/**/*.php"]
+        },
+        {
+            "id": "l12_local_disk_default_root",
+            "title": "Local filesystem disk default root changed to storage/app/private",
+            "description": "The local disk root now defaults to storage/app/private instead of storage/app. Define the local disk explicitly to restore previous behavior.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#local-filesystem-disk-default-root-path",
+            "affected_files": ["config/filesystems.php"]
+        },
+        {
+            "id": "l12_multi_schema_database_inspecting",
+            "title": "Schema methods return all schemas by default",
+            "description": "Schema::getTables(), Schema::getViews(), Schema::getTypes() now return results from all schemas. Schema::getTableListing() returns schema-qualified names. Pass schema argument to filter.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#multi-schema-database-inspecting",
+            "affected_files": ["app/**/*.php", "database/migrations/**/*.php"]
+        },
+        {
+            "id": "l12_nested_array_request_merging",
+            "title": "mergeIfMissing() supports dot notation for nested arrays",
+            "description": "Request::mergeIfMissing() now merges nested array data via dot notation instead of creating literal dot-notation keys.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#nested-array-request-merging",
+            "affected_files": ["app/Http/**/*.php"]
+        },
+        {
+            "id": "l12_route_precedence",
+            "title": "Route precedence unified for cached and uncached routing",
+            "description": "When multiple routes have the same name, uncached routing now matches the first registered route (matching cached behaviour) instead of the last.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#route-precedence",
+            "affected_files": ["routes/**/*.php"]
+        },
+        {
+            "id": "l12_database_constructor_signatures",
+            "title": "Database Grammar and Blueprint constructors require Connection",
+            "description": "Illuminate\\Database\\Grammar and Illuminate\\Database\\Schema\\Blueprint constructors now require a Connection instance. Grammar::setConnection() removed. Primarily affects custom database drivers.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#database-constructor-signature-changes",
+            "affected_files": ["app/**/*.php"]
+        },
+        {
+            "id": "l12_database_token_repository_expires",
+            "title": "DatabaseTokenRepository $expires parameter now in seconds",
+            "description": "The constructor of DatabaseTokenRepository now expects the $expires parameter in seconds rather than minutes.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/12.x/upgrade#authentication",
+            "affected_files": ["config/auth.php"]
+        }
+    ]
+}

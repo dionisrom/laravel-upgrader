@@ -13,6 +13,11 @@ final class VersionCommand extends Command
     protected static string $defaultName = 'version';
     protected static string $defaultDescription = 'Show tool and bundled rule set versions';
 
+    public function __construct()
+    {
+        parent::__construct('version');
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $output->writeln(sprintf('Laravel Enterprise Upgrader v%s', RunCommand::VERSION));

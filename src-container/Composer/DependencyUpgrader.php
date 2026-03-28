@@ -16,6 +16,8 @@ final class DependencyUpgrader
     public function __construct(
         private readonly CompatibilityChecker $compatibilityChecker,
         private readonly ConflictResolver $conflictResolver,
+        private readonly string $frameworkPackage = self::FRAMEWORK_PACKAGE,
+        private readonly string $frameworkTarget = self::FRAMEWORK_TARGET,
     ) {}
 
     /**
@@ -39,17 +41,20 @@ final class DependencyUpgrader
 
         $allPackages = array_merge($require, $requireDev);
 
-        // 3. Check compatibility for each package; collect blockers
+        // 3. Check compatibility for each package; collect blockers and cache results
         /** @var DependencyBlocker[] $blockers */
         $blockers = [];
+        /** @var array<string, PackageCompatibility> $compatCache */
+        $compatCache = [];
 
         foreach ($allPackages as $package => $constraint) {
             // Skip platform requirements and laravel/framework itself (handled separately)
-            if ($this->isPlatformRequirement($package) || $package === self::FRAMEWORK_PACKAGE) {
+            if ($this->isPlatformRequirement($package) || $package === $this->frameworkPackage) {
                 continue;
             }
 
             $compatibility = $this->compatibilityChecker->check($package, $constraint);
+            $compatCache[$package] = $compatibility;
 
             if ($compatibility->isBlocker()) {
                 $blocker = new DependencyBlocker(
@@ -91,32 +96,40 @@ final class DependencyUpgrader
         $packagesUpdated = 0;
 
         // Always bump laravel/framework
-        if (isset($composerData['require'][self::FRAMEWORK_PACKAGE])) {
-            $composerData['require'][self::FRAMEWORK_PACKAGE] = self::FRAMEWORK_TARGET;
+        if (isset($composerData['require'][$this->frameworkPackage])) {
+            $composerData['require'][$this->frameworkPackage] = $this->frameworkTarget;
             $packagesUpdated++;
         }
 
-        // Apply recommended versions for known-compatible packages
+        // Apply recommended versions for known-compatible packages (using cached results)
         foreach (['require', 'require-dev'] as $section) {
             if (!isset($composerData[$section]) || !is_array($composerData[$section])) {
                 continue;
             }
 
             foreach ($composerData[$section] as $package => $constraint) {
-                if ($this->isPlatformRequirement($package) || $package === self::FRAMEWORK_PACKAGE) {
+                if ($this->isPlatformRequirement($package) || $package === $this->frameworkPackage) {
                     continue;
                 }
 
-                $compatibility = $this->compatibilityChecker->check($package, $constraint);
+                $compatibility = $compatCache[$package] ?? $this->compatibilityChecker->check($package, $constraint);
 
-                if ($compatibility->l9Support === true && $compatibility->recommendedVersion !== null) {
+                if ($compatibility->support === true && $compatibility->recommendedVersion !== null) {
                     $composerData[$section][$package] = $compatibility->recommendedVersion;
                     $packagesUpdated++;
                 }
             }
         }
 
-        // 6. Write composer.json atomically
+        // 6. Disable classmap optimization to avoid touch() permission errors
+        //    on Windows-mounted Docker volumes (e.g. NTFS via Docker Desktop).
+        //    The config key is stripped rather than set to false so the output
+        //    composer.json stays clean.
+        if (isset($composerData['config']['optimize-autoloader'])) {
+            unset($composerData['config']['optimize-autoloader']);
+        }
+
+        // 7. Write composer.json atomically
         $this->writeComposerJsonAtomic($composerJsonPath, $composerData);
 
         // 7. Run composer install
@@ -125,7 +138,7 @@ final class DependencyUpgrader
         try {
             $this->runComposerInstall($workspacePath);
         } catch (\RuntimeException $e) {
-            $this->emit('composer.failed', ['message' => $e->getMessage()]);
+            $this->emit('composer_install_failed', ['message' => $e->getMessage()]);
             return UpgradeResult::failure($e->getMessage(), $blockers);
         }
 
@@ -170,6 +183,15 @@ final class DependencyUpgrader
      */
     private function writeComposerJsonAtomic(string $path, array $data): void
     {
+        // Composer requires certain keys to be JSON objects, not arrays.
+        // PHP's json_encode turns empty associative arrays into [] instead of {}.
+        $objectKeys = ['require', 'require-dev', 'autoload', 'autoload-dev', 'config', 'extra', 'scripts'];
+        foreach ($objectKeys as $key) {
+            if (isset($data[$key]) && is_array($data[$key]) && empty($data[$key])) {
+                $data[$key] = new \stdClass();
+            }
+        }
+
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         if ($json === false) {
@@ -190,6 +212,14 @@ final class DependencyUpgrader
 
     private function runComposerInstall(string $workspacePath): void
     {
+        // Remove stale lock file — the constraints were just modified, so the
+        // old lock is incompatible. Removing it lets `composer install` perform
+        // a full resolution as required by TRD-COMP-003.
+        $lockFile = rtrim($workspacePath, '/\\') . DIRECTORY_SEPARATOR . 'composer.lock';
+        if (file_exists($lockFile)) {
+            unlink($lockFile);
+        }
+
         $process = new Process(
             command: ['composer', 'install', '--no-interaction', '--prefer-dist', '--no-scripts'],
             cwd: $workspacePath,
@@ -222,4 +252,73 @@ final class DependencyUpgrader
     {
         echo json_encode(['type' => $type, 'data' => $data], JSON_UNESCAPED_SLASHES) . "\n";
     }
+}
+
+// ─── CLI entry point ──────────────────────────────────────────────────────────
+// Invoked by hop entrypoints via: php DependencyUpgrader.php <workspace> [--framework-target=^X.0] [--compatibility=/path/to/file.json]
+if (isset($argv) && realpath($argv[0]) === realpath(__FILE__)) {
+    // Bootstrap the Composer autoloader.
+    // Container layout: /upgrader/src/Composer/DependencyUpgrader.php → autoloader at /upgrader/vendor/autoload.php
+    $autoloader = dirname(__DIR__, 2) . '/vendor/autoload.php';
+
+    if (!file_exists($autoloader)) {
+        $payload = ['event' => 'config_error', 'error' => "Autoloader not found: {$autoloader}"];
+        echo json_encode($payload) . "\n";
+        exit(2);
+    }
+
+    require_once $autoloader;
+
+    if (!isset($argv[1])) {
+        fwrite(STDERR, "Usage: php DependencyUpgrader.php <workspace_path> [--framework-target=^9.0] [--compatibility=/path/to/file.json]\n");
+        exit(2);
+    }
+
+    $workspacePath     = rtrim($argv[1], '/');
+    $frameworkTarget   = null;
+    $compatibilityFile = null;
+
+    foreach (array_slice($argv, 2) as $arg) {
+        if (str_starts_with($arg, '--framework-target=')) {
+            $frameworkTarget = substr($arg, strlen('--framework-target='));
+        } elseif (str_starts_with($arg, '--compatibility=')) {
+            $compatibilityFile = substr($arg, strlen('--compatibility='));
+        }
+    }
+
+    if (!is_dir($workspacePath)) {
+        $payload = ['event' => 'config_error', 'error' => "Workspace not found: {$workspacePath}"];
+        echo json_encode($payload) . "\n";
+        exit(2);
+    }
+
+    $checker  = new CompatibilityChecker($compatibilityFile);
+    $resolver = new ConflictResolver();
+
+    $upgrader = $frameworkTarget !== null
+        ? new DependencyUpgrader($checker, $resolver, frameworkTarget: $frameworkTarget)
+        : new DependencyUpgrader($checker, $resolver);
+
+    try {
+        $result = $upgrader->upgrade($workspacePath);
+    } catch (Exception\DependencyBlockerException $e) {
+        $payload = [
+            'event'    => 'dependency_error',
+            'error'    => $e->getMessage(),
+            'blockers' => array_map(
+                static fn(DependencyBlocker $b) => ['package' => $b->package, 'reason' => $b->reason],
+                $e->getBlockers(),
+            ),
+        ];
+        echo json_encode($payload) . "\n";
+        exit(1);
+    }
+
+    if (!$result->success) {
+        $payload = ['event' => 'dependency_error', 'error' => $result->errorMessage ?? 'Unknown dependency upgrade failure'];
+        echo json_encode($payload) . "\n";
+        exit(1);
+    }
+
+    exit(0);
 }

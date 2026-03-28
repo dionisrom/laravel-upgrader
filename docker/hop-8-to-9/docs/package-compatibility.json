@@ -3,92 +3,92 @@
   "hop": "8_to_9",
   "packages": {
     "spatie/laravel-permission": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^5.5",
       "notes": "Requires v5.5+ for Laravel 9 support. Run: composer require spatie/laravel-permission:^5.5"
     },
     "livewire/livewire": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^2.10",
       "notes": "Livewire v2.10+ supports Laravel 9. No code changes required."
     },
     "laravel/sanctum": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^3.0",
       "notes": "Sanctum v3 required for Laravel 9. The sanctum.php config file gained new keys. Publish config after upgrade: php artisan vendor:publish --tag=sanctum-config. Run: composer require laravel/sanctum:^3.0"
     },
     "laravel/passport": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^11.0",
       "notes": "Passport v11 required for Laravel 9. Passport v11 drops support for implicit grants by default. Run: composer require laravel/passport:^11.0"
     },
     "laravel/horizon": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^5.9",
       "notes": "Horizon v5.9+ supports Laravel 9. No breaking changes for most applications."
     },
     "laravel/telescope": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^4.7",
       "notes": "Telescope v4.7+ supports Laravel 9. Re-publish assets after upgrade: php artisan telescope:publish"
     },
     "laravel/cashier-stripe": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^14.0",
       "notes": "Cashier v14 required for Laravel 9 compatibility. Includes Stripe API v2022+ support. Run: composer require laravel/cashier:^14.0"
     },
     "barryvdh/laravel-debugbar": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^3.6",
       "notes": "Debugbar v3.6+ supports Laravel 9. Run: composer require barryvdh/laravel-debugbar:^3.6"
     },
     "spatie/laravel-medialibrary": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^10.0",
       "notes": "MediaLibrary v10 required for Laravel 9. The filesystem changes in v9 require reviewing disk configuration. Run: composer require spatie/laravel-medialibrary:^10.0"
     },
     "spatie/laravel-activitylog": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^4.5",
       "notes": "laravel-activitylog v4.5+ required for Laravel 9. Run: composer require spatie/laravel-activitylog:^4.5"
     },
     "spatie/laravel-backup": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^8.1",
       "notes": "laravel-backup v8.1+ supports Laravel 9 and Flysystem v3. Run: composer require spatie/laravel-backup:^8.1"
     },
     "tymon/jwt-auth": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^2.0",
       "notes": "jwt-auth v2.0+ supports Laravel 9. Ensure JWT secret is regenerated after upgrade."
     },
     "laravel/socialite": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^5.2",
       "notes": "Socialite v5.2+ supports Laravel 9. No major breaking changes for most providers."
     },
     "maatwebsite/excel": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^3.1.30",
       "notes": "Laravel Excel v3.1.30+ supports Laravel 9. Run: composer require maatwebsite/excel:^3.1.30"
     },
     "fruitcake/laravel-cors": {
-      "l9_support": false,
+      "support": false,
       "recommended_version": null,
       "notes": "fruitcake/laravel-cors is deprecated. Laravel 9 ships with CORS support built-in via config/cors.php. Remove this package and use the built-in solution."
     },
     "predis/predis": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^2.0",
       "notes": "predis v2 required for PHP 8.x compatibility. Alternatively use the phpredis extension. Run: composer require predis/predis:^2.0"
     },
     "intervention/image": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^2.7",
       "notes": "Intervention Image v2.7+ supports Laravel 9. Note: v3.x requires PHP 8.1; stay on v2.7 for PHP 8.0 environments."
     },
     "doctrine/dbal": {
-      "l9_support": true,
+      "support": true,
       "recommended_version": "^3.1",
       "notes": "Laravel 9 requires doctrine/dbal ^3.1 for schema modification methods (change(), renameColumn() etc). Run: composer require doctrine/dbal:^3.1"
     }

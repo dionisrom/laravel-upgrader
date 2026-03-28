@@ -1,0 +1,36 @@
+{
+  "package": "spatie/laravel-activitylog",
+  "description": "Spatie Laravel Activity Log migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "Activity Log V4 is compatible with Laravel 8 and 9"
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "Activity Log V4 supports Laravel 8-13. No breaking PHP API changes via Rector."
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^4.7",
+      "to_constraint": "^4.7",
+      "rules": [],
+      "notes": "No breaking changes"
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^4.7",
+      "to_constraint": "^4.7",
+      "rules": [],
+      "notes": "No breaking changes"
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^4.7",
+      "to_constraint": "^4.7",
+      "rules": [],
+      "notes": "No breaking changes"
+    }
+  }
+}

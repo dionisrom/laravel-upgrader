@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Workspace;
 
+use App\Orchestrator\State\TransformCheckpoint;
 use App\Workspace\Exception\ConcurrentUpgradeException;
 use App\Workspace\Exception\WorkspaceException;
 use Symfony\Component\Process\Process;
@@ -11,12 +12,40 @@ use Symfony\Component\Process\Process;
 final class WorkspaceManager
 {
     private const DIR_MODE_WORKSPACE = 0700;
+    private const DEFAULT_CHECKPOINT_HOP = 'workspace_apply';
+
+    /** @var \Closure(string): string */
+    private \Closure $pathNormalizer;
+
+    /** @var \Closure(string, string, array<int, string>, string): void */
+    private \Closure $checkpointWriter;
+
+    /** @var \Closure(array<string, mixed>): void */
+    private \Closure $eventEmitter;
 
     /** @var array<string, resource> */
     private array $lockHandles = [];
 
     /** @var array<string, string> workspace path => original repo path */
     private array $workspaceToRepoPath = [];
+
+    public function __construct(
+        ?callable $pathNormalizer = null,
+        ?callable $checkpointWriter = null,
+        ?callable $eventEmitter = null,
+    ) {
+        $this->pathNormalizer = $pathNormalizer !== null
+            ? \Closure::fromCallable($pathNormalizer)
+            : \Closure::fromCallable([$this, 'defaultNormalizePath']);
+
+        $this->checkpointWriter = $checkpointWriter !== null
+            ? \Closure::fromCallable($checkpointWriter)
+            : \Closure::fromCallable([$this, 'writeTransformCheckpoint']);
+
+        $this->eventEmitter = $eventEmitter !== null
+            ? \Closure::fromCallable($eventEmitter)
+            : \Closure::fromCallable([$this, 'defaultEmitEvent']);
+    }
 
     /**
      * Creates a content-addressed isolated workspace copy of $repoPath.
@@ -69,11 +98,29 @@ final class WorkspaceManager
         $seq = 1;
 
         foreach ($fileDiffs as $fileDiff) {
-            $relativeFile = $fileDiff['file'];
+            $relativeFile = $this->normalizeRelativePath($fileDiff['file']);
             $diff = $fileDiff['diff'];
             $appliedRectors = $fileDiff['appliedRectors'];
 
-            $absolutePath = $this->normalizePath($workspacePath . DIRECTORY_SEPARATOR . $relativeFile);
+            $absolutePath = $this->normalizePath(
+                $workspacePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativeFile)
+            );
+
+            $parentDir = dirname($absolutePath);
+            if (!is_dir($parentDir)) {
+                if (!mkdir($parentDir, self::DIR_MODE_WORKSPACE, true) && !is_dir($parentDir)) {
+                    $failed++;
+                    $failedFile = $relativeFile;
+                    $this->emitEvent([
+                        'event' => 'pipeline_error',
+                        'file' => $relativeFile,
+                        'error' => 'Failed to create parent directory in workspace',
+                        'ts' => time(),
+                        'seq' => $seq++,
+                    ]);
+                    break;
+                }
+            }
 
             $originalContent = '';
             if (is_file($absolutePath)) {
@@ -125,24 +172,6 @@ final class WorkspaceManager
                 break;
             }
 
-            // Ensure parent directory exists in workspace
-            $parentDir = dirname($absolutePath);
-            if (!is_dir($parentDir)) {
-                if (!mkdir($parentDir, self::DIR_MODE_WORKSPACE, true) && !is_dir($parentDir)) {
-                    @unlink($tmpFile);
-                    $failed++;
-                    $failedFile = $relativeFile;
-                    $this->emitEvent([
-                        'event' => 'pipeline_error',
-                        'file' => $relativeFile,
-                        'error' => 'Failed to create parent directory in workspace',
-                        'ts' => time(),
-                        'seq' => $seq++,
-                    ]);
-                    break;
-                }
-            }
-
             if (!rename($tmpFile, $absolutePath)) {
                 @unlink($tmpFile);
                 $failed++;
@@ -151,6 +180,21 @@ final class WorkspaceManager
                     'event' => 'pipeline_error',
                     'file' => $relativeFile,
                     'error' => 'Failed to atomically rename temp file to target',
+                    'ts' => time(),
+                    'seq' => $seq++,
+                ]);
+                break;
+            }
+
+            try {
+                ($this->checkpointWriter)($workspacePath, $relativeFile, $appliedRectors, $absolutePath);
+            } catch (\Throwable $e) {
+                $failed++;
+                $failedFile = $relativeFile;
+                $this->emitEvent([
+                    'event' => 'pipeline_error',
+                    'file' => $relativeFile,
+                    'error' => sprintf('Failed to update transform checkpoint: %s', $e->getMessage()),
                     'ts' => time(),
                     'seq' => $seq++,
                 ]);
@@ -195,6 +239,7 @@ final class WorkspaceManager
             throw new WorkspaceException(sprintf('Original repo path does not exist: %s', $originalRepoPath));
         }
 
+        $this->removeStaleFiles($originalRepoPath, $workspacePath);
         $this->copyDirectory($workspacePath, $originalRepoPath);
     }
 
@@ -271,11 +316,92 @@ final class WorkspaceManager
      */
     private function normalizePath(string $path): string
     {
-        if (PHP_OS_FAMILY === 'Windows') {
-            return str_replace('\\', '/', $path);
+        return ($this->pathNormalizer)($path);
+    }
+
+    private function defaultNormalizePath(string $path): string
+    {
+        $normalizedPath = str_replace('\\', '/', $path);
+
+        if ($this->looksLikeWindowsDrivePath($normalizedPath) && $this->shouldTranslateToWsl()) {
+            return $this->translateWindowsPathToWsl($normalizedPath);
         }
 
-        return $path;
+        return $normalizedPath;
+    }
+
+    private function shouldTranslateToWsl(): bool
+    {
+        if (getenv('UPGRADER_FORCE_WSL_PATHS') === '1') {
+            return true;
+        }
+
+        $wslDistro = getenv('WSL_DISTRO_NAME');
+        if (is_string($wslDistro) && $wslDistro !== '') {
+            return true;
+        }
+
+        $osRelease = @file_get_contents('/proc/sys/kernel/osrelease');
+        if ($osRelease === false) {
+            return false;
+        }
+
+        return str_contains(strtolower($osRelease), 'microsoft');
+    }
+
+    private function looksLikeWindowsDrivePath(string $path): bool
+    {
+        return preg_match('/^[A-Za-z]:\//', $path) === 1;
+    }
+
+    private function translateWindowsPathToWsl(string $path): string
+    {
+        $driveLetter = strtolower($path[0]);
+        $suffix = ltrim(substr($path, 2), '/');
+
+        return $suffix === ''
+            ? sprintf('/mnt/%s', $driveLetter)
+            : sprintf('/mnt/%s/%s', $driveLetter, $suffix);
+    }
+
+    private function normalizeRelativePath(string $path): string
+    {
+        return ltrim(str_replace('\\', '/', $path), '/');
+    }
+
+    /**
+     * @param array<int, string> $appliedRectors
+     */
+    private function writeTransformCheckpoint(
+        string $workspacePath,
+        string $relativeFile,
+        array $appliedRectors,
+        string $absolutePath,
+    ): void {
+        $checkpoint = new TransformCheckpoint($workspacePath);
+        $existing = $checkpoint->read();
+
+        $completedRules = $existing?->completedRules ?? [];
+        foreach ($appliedRectors as $appliedRector) {
+            if (!in_array($appliedRector, $completedRules, true)) {
+                $completedRules[] = $appliedRector;
+            }
+        }
+
+        $fileHash = hash_file('sha256', $absolutePath);
+        if ($fileHash === false) {
+            throw new WorkspaceException(sprintf('Failed to hash updated file: %s', $relativeFile));
+        }
+
+        $filesHashed = $existing?->filesHashed ?? [];
+        $filesHashed[$relativeFile] = 'sha256:' . $fileHash;
+
+        $checkpoint->write(
+            $existing?->hop ?? self::DEFAULT_CHECKPOINT_HOP,
+            $completedRules,
+            $existing?->pendingRules ?? [],
+            $filesHashed,
+        );
     }
 
     private function validatePhpSyntax(string $filePath): bool
@@ -293,6 +419,16 @@ final class WorkspaceManager
      * @param array<string, mixed> $event
      */
     private function emitEvent(array $event): void
+    {
+        ($this->eventEmitter)($event);
+    }
+
+    /**
+     * Default event emitter — writes JSON-ND to STDOUT.
+     *
+     * @param array<string, mixed> $event
+     */
+    private function defaultEmitEvent(array $event): void
     {
         echo json_encode($event, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n";
     }
@@ -396,6 +532,44 @@ final class WorkspaceManager
         }
 
         return $hunks;
+    }
+
+    /**
+     * Removes files from $target that do not exist in $source, preserving VCS directories.
+     */
+    private function removeStaleFiles(string $target, string $source): void
+    {
+        $preservedDirs = ['.git', '.svn', '.hg'];
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($target, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            /** @var \SplFileInfo $item */
+            $subPath = substr($item->getPathname(), strlen($target) + 1);
+            $normalizedSubPath = str_replace('\\', '/', $subPath);
+
+            // Skip VCS directories and their contents
+            foreach ($preservedDirs as $preserved) {
+                if ($normalizedSubPath === $preserved || str_starts_with($normalizedSubPath, $preserved . '/')) {
+                    continue 2;
+                }
+            }
+
+            $correspondingSource = $source . DIRECTORY_SEPARATOR . $subPath;
+
+            if ($item->isDir()) {
+                if (!is_dir($correspondingSource)) {
+                    @rmdir($item->getPathname());
+                }
+            } else {
+                if (!is_file($correspondingSource)) {
+                    @unlink($item->getPathname());
+                }
+            }
+        }
     }
 
     /**

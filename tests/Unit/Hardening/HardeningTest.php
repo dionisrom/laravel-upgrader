@@ -277,8 +277,7 @@ final class HardeningTest extends TestCase
 
     public function testVersionCommandOutputContainsVersion(): void
     {
-        // Invoke VersionCommand directly (not via the CLI binary, which requires all
-        // commands to be registered — DashboardCommand uses #[AsCommand] in Symfony 7).
+        // Invoke VersionCommand directly; the CLI bootstrap path is covered separately.
         $command = new \App\Commands\VersionCommand();
 
         $input  = new \Symfony\Component\Console\Input\StringInput('');
@@ -377,6 +376,145 @@ final class HardeningTest extends TestCase
         // Cleanup
         @unlink($fakeRepo . '/composer.json');
         @rmdir($fakeRepo);
+    }
+
+    // -----------------------------------------------------------------------
+    // Entrypoint script-path / src-container layout contract
+    // -----------------------------------------------------------------------
+
+    /**
+     * Ensures every `run_stage "StageName" "path/to/Script.php"` call in a hop
+     * entrypoint references a PHP file that actually exists in src-container/.
+     *
+     * This is a static analysis test — no Docker required. It catches the
+     * class of bug where entrypoints reference host-side orchestrator scripts
+     * (e.g. Workspace/WorkspaceManager.php) that were never ported to
+     * src-container/ and therefore don't exist inside the runtime image.
+     */
+    public function testAllEntrypointRunStageScriptsExistInSrcContainer(): void
+    {
+        $rootDir       = dirname(__DIR__, 3);   // project root
+        $srcContainer  = $rootDir . '/src-container';
+        $dockerDir     = $rootDir . '/docker';
+
+        self::assertDirectoryExists($srcContainer, 'src-container/ directory must exist');
+        self::assertDirectoryExists($dockerDir, 'docker/ directory must exist');
+
+        $entrypoints = glob($dockerDir . '/*/entrypoint.sh') ?: [];
+        self::assertNotEmpty($entrypoints, 'No entrypoint.sh files found under docker/');
+
+        $missing = [];
+
+        foreach ($entrypoints as $entrypoint) {
+            $content = (string) file_get_contents($entrypoint);
+            $hopDir  = basename(dirname($entrypoint));
+
+            // Match: run_stage "StageName" "some/Path.php"
+            // Does NOT match the inline rector stage or PackageRuleActivator conditional blocks
+            if (preg_match_all('/^run_stage\s+"[^"]+"\s+"([^"]+\.php)"/m', $content, $matches)) {
+                foreach ($matches[1] as $scriptPath) {
+                    $absolute = $srcContainer . '/' . $scriptPath;
+                    if (!file_exists($absolute)) {
+                        $missing[] = sprintf('%s -> %s (resolved: %s)', $hopDir, $scriptPath, $absolute);
+                    }
+                }
+            }
+
+            // Also match the inline ${SRC}/... references that bypass run_stage
+            if (preg_match_all('/\$\{PHP_BIN\}\s+"\$\{SRC\}\/([^"]+\.php)"/m', $content, $matches)) {
+                foreach ($matches[1] as $scriptPath) {
+                    $absolute = $srcContainer . '/' . $scriptPath;
+                    if (!file_exists($absolute)) {
+                        $missing[] = sprintf('%s -> ${SRC}/%s (resolved: %s)', $hopDir, $scriptPath, $absolute);
+                    }
+                }
+            }
+        }
+
+        self::assertEmpty(
+            $missing,
+            sprintf(
+                "Entrypoint(s) reference stage scripts absent from src-container/:\n  %s",
+                implode("\n  ", $missing),
+            ),
+        );
+    }
+
+    public function testAllHopDockerfilesInstallPcntlExtension(): void
+    {
+        $rootDir = dirname(__DIR__, 3);
+        $dockerfiles = glob($rootDir . '/docker/hop-*/Dockerfile') ?: [];
+        $lumenDockerfile = $rootDir . '/docker/lumen-migrator/Dockerfile';
+        if (file_exists($lumenDockerfile)) {
+            $dockerfiles[] = $lumenDockerfile;
+        }
+
+        self::assertNotEmpty($dockerfiles, 'No hop Dockerfiles found under docker/.');
+
+        $missing = [];
+
+        foreach ($dockerfiles as $dockerfile) {
+            $content = (string) file_get_contents($dockerfile);
+
+            if (!str_contains($content, 'docker-php-ext-install pcntl')) {
+                $missing[] = str_replace($rootDir . '/', '', $dockerfile);
+            }
+        }
+
+        self::assertEmpty(
+            $missing,
+            sprintf(
+                "Hop Dockerfiles must install ext-pcntl so package-heavy warmups and Horizon upgrades resolve cleanly:\n  %s",
+                implode("\n  ", $missing),
+            ),
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // PHP 8.1 compatibility: src-container must not use readonly class syntax
+    // -----------------------------------------------------------------------
+
+    /**
+     * `readonly class` (PHP 8.2+) is forbidden in src-container/ because hops
+     * 8→9 and 9→10 run on PHP 8.1-cli-alpine.  Individual `readonly` property
+     * modifiers are fine; class-level readonly is not.
+     *
+     * This is a static-analysis test — no Docker required.
+     */
+    public function testSrcContainerHasNoReadonlyClassDeclarations(): void
+    {
+        $rootDir      = dirname(__DIR__, 3);
+        $srcContainer = $rootDir . '/src-container';
+
+        self::assertDirectoryExists($srcContainer, 'src-container/ must exist');
+
+        $violations = [];
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($srcContainer, \FilesystemIterator::SKIP_DOTS),
+        );
+
+        /** @var \SplFileInfo $file */
+        foreach ($iterator as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $content = (string) file_get_contents($file->getPathname());
+
+            // Match `readonly class` or `final readonly class` (PHP 8.2+ class modifier)
+            if (preg_match('/\breadonly\s+class\b/i', $content)) {
+                $violations[] = str_replace($rootDir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            }
+        }
+
+        self::assertEmpty(
+            $violations,
+            sprintf(
+                "src-container/ files use `readonly class` (PHP 8.2+) which is incompatible with PHP 8.1 hop containers:\n  %s",
+                implode("\n  ", $violations),
+            ),
+        );
     }
 
     // -----------------------------------------------------------------------

@@ -1,0 +1,36 @@
+{
+  "package": "spatie/laravel-permission",
+  "description": "Spatie Laravel Permission migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^5.0",
+      "rules": [],
+      "notes": "Permission V5 API is mostly backwards compatible for common usage patterns"
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^5.0",
+      "to_constraint": "^5.5",
+      "rules": [],
+      "notes": "No breaking PHP API changes via Rector between these minor versions"
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^5.5",
+      "to_constraint": "^6.0",
+      "rules": [],
+      "notes": "Permission V6 supports Laravel 10-11+. Structural changes are config/migration level — require manual review."
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^6.0",
+      "to_constraint": "^6.0",
+      "rules": [],
+      "notes": "No breaking changes"
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^6.0",
+      "to_constraint": "^7.0",
+      "rules": [],
+      "notes": "Permission V7 requires PHP ^8.4 and supports Laravel 12-13 only. Requires migration from V6."
+    }
+  }
+}

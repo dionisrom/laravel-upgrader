@@ -1,0 +1,137 @@
+[
+    {
+        "id": "L11-001",
+        "category": "kernel_removed",
+        "title": "app/Http/Kernel.php removed",
+        "description": "The HTTP Kernel file is removed in L11. All middleware configuration moves to bootstrap/app.php withMiddleware().",
+        "severity": "critical",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#application-structure"
+    },
+    {
+        "id": "L11-002",
+        "category": "handler_removed",
+        "title": "app/Exceptions/Handler.php removed",
+        "description": "The Exception Handler file is removed in L11. All exception configuration moves to bootstrap/app.php withExceptions().",
+        "severity": "critical",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#exception-handling"
+    },
+    {
+        "id": "L11-003",
+        "category": "console_kernel_removed",
+        "title": "app/Console/Kernel.php removed",
+        "description": "The Console Kernel is removed in L11. Schedule definitions move to routes/console.php using Schedule facade.",
+        "severity": "high",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#scheduling"
+    },
+    {
+        "id": "L11-004",
+        "category": "bootstrap_app",
+        "title": "bootstrap/app.php completely rewritten",
+        "description": "The bootstrap/app.php file changes from IoC container bootstrap to Application::configure() builder pattern.",
+        "severity": "critical",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#application-structure"
+    },
+    {
+        "id": "L11-005",
+        "category": "middleware_defaults",
+        "title": "Global middleware stack moved to framework defaults",
+        "description": "L11 ships its own default global middleware stack. Only custom, non-default middleware needs to be registered.",
+        "severity": "high",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/middleware"
+    },
+    {
+        "id": "L11-006",
+        "category": "providers",
+        "title": "bootstrap/providers.php introduced",
+        "description": "L11 introduces bootstrap/providers.php for service provider registration. config/app.php providers array still works but is deprecated pattern.",
+        "severity": "medium",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#service-providers"
+    },
+    {
+        "id": "L11-007",
+        "category": "routing",
+        "title": "RouteServiceProvider removed in favour of withRouting()",
+        "description": "Route registration is now handled via the withRouting() builder method in bootstrap/app.php.",
+        "severity": "high",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/routing"
+    },
+    {
+        "id": "L11-008",
+        "category": "middleware_aliases",
+        "title": "$routeMiddleware renamed to $middlewareAliases",
+        "description": "The $routeMiddleware property was renamed to $middlewareAliases in L10.1. L11 removes the Kernel entirely.",
+        "severity": "low",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/middleware#middleware-aliases"
+    },
+    {
+        "id": "L11-009",
+        "category": "health_endpoint",
+        "title": "Built-in /up health check endpoint",
+        "description": "L11 ships with a /up health check endpoint by default via withRouting(health: '/up').",
+        "severity": "low",
+        "automated": false,
+        "migration_guide": "https://laravel.com/docs/11.x/routing#health-checks"
+    },
+    {
+        "id": "L11-010",
+        "category": "config_defaults",
+        "title": "SQLite is now the default database driver",
+        "description": "L11 ships with SQLite as the default DB_CONNECTION. Production apps must set DB_CONNECTION in .env.",
+        "severity": "medium",
+        "automated": false,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#database-default"
+    },
+    {
+        "id": "L11-011",
+        "category": "rate_limiting",
+        "title": "Rate limiter definitions move out of Kernel",
+        "description": "Rate limiter definitions in Kernel::configureRateLimiting() should move to AppServiceProvider::boot().",
+        "severity": "medium",
+        "automated": false,
+        "migration_guide": "https://laravel.com/docs/11.x/routing#defining-rate-limiters"
+    },
+    {
+        "id": "L11-012",
+        "category": "trust_proxies",
+        "title": "TrustProxies now built into framework",
+        "description": "TrustProxies is now a built-in framework feature configurable via $middleware->trustProxies() in bootstrap/app.php.",
+        "severity": "medium",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/requests#configuring-trusted-proxies"
+    },
+    {
+        "id": "L11-013",
+        "category": "migration_numbering",
+        "title": "Optional date-based migration numbering",
+        "description": "L11 introduces optional date-based migration numbering (0001_01_01_*). Existing timestamp-based migrations continue to work.",
+        "severity": "low",
+        "automated": false,
+        "migration_guide": "https://laravel.com/docs/11.x/migrations#generating-migrations"
+    },
+    {
+        "id": "L11-014",
+        "category": "php_minimum",
+        "title": "PHP 8.2 minimum requirement",
+        "description": "Laravel 11 requires PHP 8.2 or higher. PHP 8.1 is no longer supported.",
+        "severity": "critical",
+        "automated": true,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#php-8-2"
+    },
+    {
+        "id": "L11-015",
+        "category": "queue_default",
+        "title": "QUEUE_CONNECTION defaults to sync",
+        "description": "L11 defaults QUEUE_CONNECTION to sync. Production apps must set QUEUE_CONNECTION in .env.",
+        "severity": "medium",
+        "automated": false,
+        "migration_guide": "https://laravel.com/docs/11.x/upgrade#queue-default"
+    }
+]

@@ -1,0 +1,106 @@
+{
+    "generated": "2026-03-23",
+    "hop": "11_to_12",
+    "packages": {
+        "laravel/sanctum": {
+            "support": true,
+            "recommended_version": "^4.0",
+            "notes": "Compatible with Laravel 12. No breaking changes."
+        },
+        "laravel/passport": {
+            "support": true,
+            "recommended_version": "^12.0",
+            "notes": "Compatible with Laravel 12."
+        },
+        "laravel/horizon": {
+            "support": true,
+            "recommended_version": "^5.0",
+            "notes": "Compatible with Laravel 12. Requires queue config review."
+        },
+        "laravel/telescope": {
+            "support": true,
+            "recommended_version": "^5.0",
+            "notes": "Compatible with Laravel 12."
+        },
+        "laravel/cashier": {
+            "support": true,
+            "recommended_version": "^15.0",
+            "notes": "Compatible with Laravel 12. Subscription logic unchanged."
+        },
+        "laravel/scout": {
+            "support": true,
+            "recommended_version": "^10.0",
+            "notes": "Compatible with Laravel 12."
+        },
+        "laravel/socialite": {
+            "support": true,
+            "recommended_version": "^5.0",
+            "notes": "Compatible with Laravel 12."
+        },
+        "spatie/laravel-permission": {
+            "support": true,
+            "recommended_version": "^6.0",
+            "notes": "Fully compatible with Laravel 12."
+        },
+        "spatie/laravel-medialibrary": {
+            "support": true,
+            "recommended_version": "^11.0",
+            "notes": "Compatible with Laravel 12."
+        },
+        "spatie/laravel-activitylog": {
+            "support": true,
+            "recommended_version": "^4.0",
+            "notes": "Compatible with Laravel 12."
+        },
+        "livewire/livewire": {
+            "support": true,
+            "recommended_version": "^3.0",
+            "notes": "Livewire 3 is compatible with Laravel 12."
+        },
+        "filament/filament": {
+            "support": true,
+            "recommended_version": "^3.0",
+            "notes": "Filament 3 is compatible with Laravel 12. Check panel config files."
+        },
+        "inertiajs/inertia-laravel": {
+            "support": true,
+            "recommended_version": "^2.0",
+            "notes": "Inertia.js Laravel adapter v2 recommended for Laravel 12. Check adapter upgrade guide."
+        },
+        "laravel/breeze": {
+            "support": "unknown",
+            "recommended_version": "^2.0",
+            "notes": "Breeze has been restructured in L12 starter kits. Manual review of auth scaffolding needed."
+        },
+        "laravel/jetstream": {
+            "support": true,
+            "recommended_version": "^5.0",
+            "notes": "Jetstream compatible with Laravel 12. Verify Livewire/Inertia stack."
+        },
+        "barryvdh/laravel-debugbar": {
+            "support": true,
+            "recommended_version": "^3.13",
+            "notes": "DebugBar 3.13+ required for Laravel 12 compatibility."
+        },
+        "laravel/framework": {
+            "support": true,
+            "recommended_version": "^12.0",
+            "notes": "Core framework upgrade."
+        },
+        "nunomaduro/collision": {
+            "support": true,
+            "recommended_version": "^8.1",
+            "notes": "Minor update required for Laravel 12."
+        },
+        "pestphp/pest": {
+            "support": true,
+            "recommended_version": "^3.0",
+            "notes": "Pest 3 is compatible with Laravel 12."
+        },
+        "phpunit/phpunit": {
+            "support": true,
+            "recommended_version": "^11.0",
+            "notes": "PHPUnit 11 compatible with Laravel 12."
+        }
+    }
+}

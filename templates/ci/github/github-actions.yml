@@ -1,0 +1,153 @@
+##
+## Laravel Enterprise Upgrader — GitHub Actions workflow
+##
+## Setup:
+##   1. Copy this file to .github/workflows/laravel-upgrade.yml in your repository.
+##   2. Add UPGRADER_TOKEN to your repository secrets (required for private repos).
+##   3. For auto-upgrade mode, ensure the default GITHUB_TOKEN has 'contents: write'
+##      and 'pull-requests: write' permissions, or supply a PAT as GH_PAT secret.
+##
+## Trigger: Settings → Actions → Run workflow (workflow_dispatch)
+##
+
+name: Laravel Upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_version:
+        description: 'Current Laravel version (e.g. 8, 9, 10, 11, 12)'
+        required: true
+        default: '{{FROM_VERSION}}'
+        type: string
+      to_version:
+        description: 'Target Laravel version (e.g. 9, 10, 11, 12, 13)'
+        required: true
+        default: '{{TO_VERSION}}'
+        type: string
+      mode:
+        description: 'dry-run = report only • auto-upgrade = commit + open PR'
+        required: true
+        default: '{{DEFAULT_MODE}}'
+        type: choice
+        options:
+          - dry-run
+          - auto-upgrade
+
+env:
+  UPGRADER_IMAGE: '{{IMAGE}}'
+  REPORT_DIR: '.upgrader/reports'
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── Docker image cache ────────────────────────────────────────────────
+      - name: Cache upgrader Docker image
+        id: cache-upgrader
+        uses: actions/cache@v4
+        with:
+          path: /tmp/upgrader-image.tar
+          key: upgrader-image-${{ env.UPGRADER_IMAGE }}
+
+      - name: Load cached image
+        if: steps.cache-upgrader.outputs.cache-hit == 'true'
+        run: docker load -i /tmp/upgrader-image.tar
+
+      - name: Pull and cache upgrader image
+        if: steps.cache-upgrader.outputs.cache-hit != 'true'
+        run: |
+          docker pull "${{ env.UPGRADER_IMAGE }}"
+          docker save "${{ env.UPGRADER_IMAGE }}" -o /tmp/upgrader-image.tar
+
+      # ── Run upgrader ──────────────────────────────────────────────────────
+      - name: Run Laravel Upgrader
+        run: |
+          DRY_RUN_FLAG=""
+          if [ "${{ inputs.mode }}" = "dry-run" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          docker run --rm \
+            --network=none \
+            -v "${{ github.workspace }}:/workspace" \
+            -e UPGRADER_TOKEN="${{ secrets.UPGRADER_TOKEN }}" \
+            "${{ env.UPGRADER_IMAGE }}" upgrade \
+            --from="${{ inputs.from_version }}" \
+            --to="${{ inputs.to_version }}" \
+            --output="/workspace/${{ env.REPORT_DIR }}" \
+            ${DRY_RUN_FLAG}
+
+      # ── Upload report artifact ────────────────────────────────────────────
+      - name: Upload upgrade report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upgrade-report-l${{ inputs.from_version }}-to-l${{ inputs.to_version }}
+          path: ${{ env.REPORT_DIR }}/
+          retention-days: 30
+
+      # ── Post diff summary as PR comment (dry-run only) ─────────────────────
+      - name: Post upgrade summary to PR
+        if: ${{ inputs.mode == 'dry-run' && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORT_FILE="${{ env.REPORT_DIR }}/summary.md"
+          if [ ! -f "$REPORT_FILE" ]; then
+            echo "No summary report found at $REPORT_FILE — skipping PR comment."
+            exit 0
+          fi
+
+          {
+            echo "## Laravel Upgrade Report (dry-run)"
+            echo ""
+            echo "Upgrade from Laravel \`${{ inputs.from_version }}\` to \`${{ inputs.to_version }}\`"
+            echo ""
+            cat "$REPORT_FILE"
+          } > /tmp/pr-comment-body.md
+
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body-file /tmp/pr-comment-body.md
+
+      # ── Create branch + PR (auto-upgrade only) ────────────────────────────
+      - name: Create upgrade branch and open PR
+        if: ${{ inputs.mode == 'auto-upgrade' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="upgrade/l${{ inputs.from_version }}-to-l${{ inputs.to_version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit — the repository may already be up to date."
+            exit 0
+          fi
+
+          git commit -m "chore: upgrade Laravel ${{ inputs.from_version }} to ${{ inputs.to_version }}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "Laravel ${{ inputs.from_version }} → ${{ inputs.to_version }} upgrade" \
+            --body "Automated upgrade generated by the Laravel Enterprise Upgrader.
+
+**Review the upgrade report artifact** before merging — it contains the diff and any manual-review items.
+
+- From: Laravel \`${{ inputs.from_version }}\`
+- To:   Laravel \`${{ inputs.to_version }}\`" \
+            --base "${{ github.ref_name }}" \
+            --head "$BRANCH"

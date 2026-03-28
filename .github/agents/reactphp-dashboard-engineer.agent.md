@@ -1,6 +1,6 @@
 ---
 description: "Use when: ReactPHP HTTP server, Server-Sent Events (SSE), non-blocking I/O, real-time dashboard, JSON-ND stream processing from Docker containers, async event loop, client disconnect detection, 2D timeline dashboard, single-file HTML dashboard (inline CSS/JS). Specialist for ReactPHP and real-time streaming tasks."
-tools: [read, edit, search, execute, context7/*, memory/*]
+tools: [vscode/resolveMemoryFileUri, vscode/runCommand, vscode/askQuestions, execute, read, edit, search, web, 'context7/*', 'sequentialthinking/*', todo]
 model: "Claude Sonnet 4.6 (copilot)"
 ---
 
@@ -67,3 +67,9 @@ P1-11, P1-17, P3-07
 - Client disconnect detection within 5 seconds
 - Dashboard HTML must be valid, accessible, and work in all major browsers
 - All event types documented with JSON schema
+
+## Working Standards
+
+- **Never assume — always validate.** Do not assume framework behavior, API signatures, config defaults, or version compatibility. Use tools, MCPs (Context7, web search), and direct code inspection to confirm facts before acting on them. If you cannot verify something, state the uncertainty explicitly.
+- **95%+ confidence threshold.** Before marking any task, TODO item, or deliverable as complete, your confidence that it is correct must exceed 95%. If confidence is below that threshold, run additional validation (tests, static analysis, manual inspection) until it is met or report what is blocking full confidence.
+- **Decompose complex tasks with Sequential Thinking.** When a task involves more than 3 non-trivial steps, use the Sequential Thinking MCP (`sequentialthinking/*`) to break it into smaller, verifiable sub-tasks before beginning implementation. Each sub-task should be independently testable.

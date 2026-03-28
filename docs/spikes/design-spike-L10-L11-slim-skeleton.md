@@ -587,7 +587,86 @@ L11 creates `routes/web.php` and `routes/api.php` but no `RouteServiceProvider` 
 )
 ```
 
-**Migration for `RouteServiceProvider.php`:** Parse the existing `RouteServiceProvider`, extract the `map()` method calls, and translate to `withRouting()` parameters. Flag any dynamic route loading (loop-based, glob-based) as `warning`.
+#### 5.4.1 Standard L10 Pattern — `RouteServiceProvider::boot()` and `map()`
+
+A typical L10 `RouteServiceProvider` registers routes via the `boot()` method (which calls `$this->routes(...)` or `map()`):
+
+```php
+// L10 — app/Providers/RouteServiceProvider.php (standard)
+class RouteServiceProvider extends ServiceProvider
+{
+    public const HOME = '/home';
+
+    public function boot(): void
+    {
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
+        $this->routes(function () {
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(base_path('routes/api.php'));
+
+            Route::middleware('web')
+                ->group(base_path('routes/web.php'));
+        });
+    }
+}
+```
+
+**L11 target — `bootstrap/app.php`:**
+
+```php
+->withRouting(
+    web: __DIR__.'/../routes/web.php',
+    api: __DIR__.'/../routes/api.php',
+    commands: __DIR__.'/../routes/console.php',
+    health: '/up',
+)
+```
+
+The `withRouting()` method accepts these named parameters: `web`, `api`, `commands`, `channels`, `health`, `apiPrefix` (default `'api'`), and a `then` closure for additional route files.
+
+#### 5.4.2 `configureRateLimiting()` Migration Destination
+
+In L10, rate limiters are typically defined inside `RouteServiceProvider::boot()` or a dedicated `configureRateLimiting()` method. In L11, these move to `AppServiceProvider::boot()`:
+
+```php
+// L11 — app/Providers/AppServiceProvider.php
+public function boot(): void
+{
+    RateLimiter::for('api', function (Request $request) {
+        return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+    });
+}
+```
+
+The `RouteServiceProviderMigrator` must extract all `RateLimiter::for(...)` calls and relocate them to `AppServiceProvider::boot()` rather than `bootstrap/app.php`. This applies to both the standard `configureRateLimiting()` pattern and inline rate limiter definitions in `boot()`.
+
+#### 5.4.3 Enterprise Non-Standard Patterns
+
+| Pattern | Example | L11 Migration | Severity |
+|---|---|---|---|
+| Versioned API routes (`mapApiV1Routes`, `mapApiV2Routes`) | `Route::prefix('api/v1')->group(...)` per version | Use `then:` closure in `withRouting()` for additional groups | `warning` |
+| Domain-based routing | `Route::domain('{tenant}.app.com')->group(...)` | Use `then:` closure; domain routes are not first-class `withRouting()` params | `warning` |
+| Conditional route loading (feature flag / env) | `if (config('features.admin')) { Route::group(...) }` | Use `then:` closure; flag for manual review | `warning` |
+| Route model binding customisations in `boot()` | `Route::model('user', User::class)` or `Route::bind('user', fn ...)` | Move to `AppServiceProvider::boot()` alongside rate limiters | `info` |
+| Global route patterns | `Route::pattern('id', '[0-9]+')` | Move to `AppServiceProvider::boot()` | `info` |
+| Custom API prefix override | `->prefix('api/v2')` instead of `'api'` | Map to `apiPrefix:` parameter in `withRouting()` | `info` |
+| Glob-based / loop-based dynamic route loading | `foreach (glob(...) as $routeFile)` | Use `then:` closure; flag as `warning` — cannot be fully automated | `warning` |
+
+#### 5.4.4 Migration Algorithm
+
+1. Parse `RouteServiceProvider` AST via `nikic/php-parser`.
+2. Extract `RateLimiter::for(...)` calls → queue for `AppServiceProvider::boot()`.
+3. Extract `Route::model(...)`, `Route::bind(...)`, `Route::pattern(...)` calls → queue for `AppServiceProvider::boot()`.
+4. Classify route group registrations:
+   - Standard `web` group (middleware `web`, no prefix) → `web:` parameter.
+   - Standard `api` group (middleware `api`, prefix `api`) → `api:` parameter + `apiPrefix:` if non-default.
+   - Everything else → `then:` closure body.
+5. Detect dynamic/loop-based loading → emit `warning` event, place in `then:` closure with `// TODO: manual review` comment.
+6. Write `withRouting()` block. Write relocated bindings/rate-limiters to `AppServiceProvider`.
 
 ### 5.5 Health Check Endpoint
 

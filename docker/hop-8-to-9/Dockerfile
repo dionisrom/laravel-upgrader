@@ -12,6 +12,7 @@ RUN apk add --no-cache \
     bash \
     git \
     unzip \
+    && docker-php-ext-install pcntl \
     && rm -rf /var/cache/apk/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -31,7 +32,24 @@ RUN composer install \
     --optimize-autoloader \
     --prefer-dist
 
-# ─── Stage 3: Runtime ─────────────────────────────────────────────────────────
+# ─── Stage 3: laravel-cache (pre-warm Composer for target project) ────────────
+FROM deps AS laravel-cache
+
+WORKDIR /tmp/warmup
+
+# Populates COMPOSER_CACHE_DIR with L9 package zips + metadata so that
+# DependencyUpgrader can run `composer install --prefer-dist` offline
+# at runtime when the container has --network=none.
+COPY docker/hop-8-to-9/composer.l9-warmup.json ./composer.json
+RUN COMPOSER_CACHE_DIR=/laravel-composer-cache \
+    composer install \
+        --no-scripts \
+        --no-interaction \
+        --no-progress \
+        --prefer-dist \
+        --quiet
+
+# ─── Stage 4: Runtime ─────────────────────────────────────────────────────────
 FROM base AS runtime
 
 # Non-root user
@@ -47,6 +65,7 @@ COPY src-container/ /upgrader/src/
 
 # Rector config
 COPY rector-configs/rector.l8-to-l9.php /upgrader/rector.php
+COPY rector-configs/workspace-skip-paths.php /upgrader/workspace-skip-paths.php
 
 # Bundled knowledge base (no network at runtime)
 COPY docker/hop-8-to-9/docs/ /upgrader/docs/
@@ -61,6 +80,10 @@ COPY vendor-patches/rector-laravel-fork/ /upgrader/vendor-patches/rector-laravel
 # Entrypoint
 COPY docker/hop-8-to-9/entrypoint.sh /upgrader/entrypoint.sh
 RUN chmod +x /upgrader/entrypoint.sh
+
+# Pre-warmed Composer cache — allows offline composer install with --network=none
+COPY --from=laravel-cache --chown=upgrader:upgrader \
+    /laravel-composer-cache /home/upgrader/.composer/cache
 
 USER upgrader
 

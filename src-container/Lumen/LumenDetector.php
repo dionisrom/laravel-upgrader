@@ -54,9 +54,9 @@ final class LumenDetector
         $hasPackage = false;
         if (file_exists($composerFile)) {
             $contents = (string) file_get_contents($composerFile);
-            /** @var array{require?: array<string, string>} $composer */
+            /** @var array{require?: array<string, string>, require-dev?: array<string, string>} $composer */
             $composer = json_decode($contents, true);
-            $hasPackage = is_array($composer) && isset($composer['require']['laravel/lumen-framework']);
+            $hasPackage = is_array($composer) && FrameworkDetector::composerDeclaresLumen($composer);
         }
 
         $bootstrapFile = $workspacePath . '/bootstrap/app.php';

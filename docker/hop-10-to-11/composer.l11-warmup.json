@@ -1,0 +1,21 @@
+{
+    "name": "upgrader/l11-warmup",
+    "description": "Composer cache warmup for Laravel 11 target packages. Used at Docker build time only — populates the Composer HTTP cache so DependencyUpgrader can run composer install offline (--network=none) at container runtime.",
+    "type": "project",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^11.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "laravel/horizon": "^5.21",
+        "laravel/passport": "^12.0",
+        "laravel/sanctum": "^4.0",
+        "livewire/livewire": "^3.4",
+        "spatie/laravel-activitylog": "^4.7",
+        "spatie/laravel-permission": "^6.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}

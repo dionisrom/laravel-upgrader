@@ -69,6 +69,38 @@ final class JsonFormatterTest extends TestCase
         }
     }
 
+    public function testFileScoresIncludedInOutput(): void
+    {
+        $data    = $this->makeData();
+        // Use reflection or create data with diffs to test file_scores
+        $dataWithDiffs = new ReportData(
+            repoName:            'acme/app',
+            fromVersion:         '8',
+            toVersion:           '9',
+            runId:               'test-run-001',
+            repoSha:             'abc123',
+            hostVersion:         '1.0.0',
+            timestamp:           '2024-01-01T00:00:00Z',
+            fileDiffs:           [['file' => 'app/Foo.php', 'diff' => '-old\n+new', 'rules' => ['BC-001']]],
+            manualReviewItems:   [],
+            dependencyBlockers:  [],
+            phpstanRegressions:  [],
+            verificationResults: [],
+            auditEvents:        [],
+            hasSyntaxError:      false,
+            totalFilesScanned:   10,
+            totalFilesChanged:   1,
+        );
+        $output  = $this->formatter->format($dataWithDiffs);
+        $decoded = json_decode($output, true);
+
+        $this->assertArrayHasKey('file_scores', $decoded);
+        $this->assertCount(1, $decoded['file_scores']);
+        $this->assertSame('app/Foo.php', $decoded['file_scores'][0]['file']);
+        $this->assertSame(100, $decoded['file_scores'][0]['score']);
+        $this->assertSame('High', $decoded['file_scores'][0]['label']);
+    }
+
     public function testFilesAreRelativePaths(): void
     {
         $items = [

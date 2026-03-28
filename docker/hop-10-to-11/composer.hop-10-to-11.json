@@ -1,0 +1,26 @@
+{
+    "name": "upgrader/hop-10-to-11",
+    "description": "Laravel 10 to 11 upgrade container dependencies",
+    "type": "project",
+    "require": {
+        "php": "^8.2",
+        "rector/rector": "^1.2",
+        "driftingly/rector-laravel": "^1.2",
+        "nikic/php-parser": "^4.19",
+        "symfony/process": "^6.0 || ^7.0",
+        "webmozart/assert": "^1.11"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": false
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "AppContainer\\": "src/"
+        }
+    }
+}

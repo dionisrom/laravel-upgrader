@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Orchestrator\State;
 
 use App\Orchestrator\State\Checkpoint;
+use App\Orchestrator\State\CheckpointNotResumableException;
 use App\Orchestrator\State\FileHasher;
 use App\Orchestrator\State\NoCheckpointException;
 use App\Orchestrator\State\WorkspaceReconciler;
@@ -36,6 +37,27 @@ final class WorkspaceReconcilerTest extends TestCase
         $this->expectExceptionMessageMatches('/Run without --resume/');
 
         $reconciler->reconcile(null, $this->tempDir);
+    }
+
+    public function testReconcileThrowsWhenCanResumeIsFalse(): void
+    {
+        $checkpoint = new Checkpoint(
+            hop: '8_to_9',
+            schemaVersion: '1',
+            completedRules: ['App\\Rules\\Done'],
+            pendingRules: ['App\\Rules\\Pending'],
+            filesHashed: [],
+            timestamp: '2026-03-21T14:30:00+00:00',
+            canResume: false,
+            hostVersion: '1.0.0',
+        );
+
+        $reconciler = new WorkspaceReconciler();
+
+        $this->expectException(CheckpointNotResumableException::class);
+        $this->expectExceptionMessageMatches('/not resumable/');
+
+        $reconciler->reconcile($checkpoint, $this->tempDir);
     }
 
     public function testReconcileSkipsUnchangedFiles(): void

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class LumenDetectionResult
+final class LumenDetectionResult
 {
     /**
      * @param 'lumen'|'lumen_ambiguous'|'laravel' $framework

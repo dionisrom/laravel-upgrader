@@ -1,0 +1,40 @@
+{
+  "package": "livewire/livewire",
+  "description": "Livewire V2 to V3 migration rules",
+  "hops": {
+    "hop-8-to-9": {
+      "from_constraint": "^2.0",
+      "to_constraint": "^2.12",
+      "rules": [],
+      "notes": "No breaking changes in Livewire between Laravel 8 and 9 hops"
+    },
+    "hop-9-to-10": {
+      "from_constraint": "^2.0",
+      "to_constraint": "^3.0",
+      "rules": [
+        "AppContainer\\Rector\\Rules\\Package\\Livewire\\EmitToDispatchRector",
+        "AppContainer\\Rector\\Rules\\Package\\Livewire\\ComputedPropertyRector"
+      ],
+      "rector_config": "rector-configs/packages/rector.livewire-v2-v3.php",
+      "notes": "Livewire V3 released with Laravel 10. emit() renamed to dispatch(), getXxxProperty() to #[Computed]"
+    },
+    "hop-10-to-11": {
+      "from_constraint": "^3.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "Livewire V4 supports Laravel 10-13 with full-stack reactive components"
+    },
+    "hop-11-to-12": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "No further Livewire breaking changes between Laravel 11 and 12"
+    },
+    "hop-12-to-13": {
+      "from_constraint": "^4.0",
+      "to_constraint": "^4.0",
+      "rules": [],
+      "notes": "No Livewire breaking changes between Laravel 12 and 13"
+    }
+  }
+}

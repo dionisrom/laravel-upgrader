@@ -99,5 +99,10 @@ final class EventEmitterTest extends TestCase
         self::assertSame(EventCatalogue::HOP_COMPLETE, $decoded['event']);
         self::assertSame('9_to_10', $decoded['hop']);
         self::assertSame(1, $decoded['seq']);
+
+        // TRD §13.1: ts must be Unix timestamp in seconds (float), not milliseconds
+        self::assertIsFloat($decoded['ts']);
+        self::assertGreaterThan(1_000_000_000, $decoded['ts']);
+        self::assertLessThan(10_000_000_000, $decoded['ts']);
     }
 }

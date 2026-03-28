@@ -1,7 +1,8 @@
 # Laravel Enterprise Upgrader — Master Task Index
 
-> **Last Updated:** 2026-03-22 (Phase 1 complete)  
-> **Total Tasks:** 39 (Phase 1: 22 · Phase 2: 9 · Phase 3: 8)  
+> **Last Updated:** 2026-03-23 (P2-09 In Progress)  
+> **Total Core Tasks:** 39 (Phase 1: 22 · Phase 2: 9 · Phase 3: 8)  
+> **Post-Review Tasks:** 8  
 > **Status Legend:** 🔲 Not Started · 🔄 In Progress · ✅ Completed · 🚫 Blocked
 
 ---
@@ -41,15 +42,15 @@
 
 | # | Task | Agent | Effort | Dependencies | Status | Notes |
 |---|---|---|---|---|---|---|
-| P2-01 | [L9→L10 Hop Container & Rules](phase2/P2-01-hop-9-to-10.md) | Rector/AST Engineer | 6-8d | Phase 1 Docker pattern | 🔲 | PHP 8.1 base |
-| P2-02 | [L10→L11 Slim Skeleton Migration](phase2/P2-02-slim-skeleton.md) | Laravel Migration Specialist | 18-22d | P1-21 (design spike) | 🔲 | Most complex P2 task |
-| P2-03 | [L11→L12 Hop Container & Rules](phase2/P2-03-hop-11-to-12.md) | Rector/AST Engineer | 6-8d | Phase 1 Docker pattern | 🔲 | Route binding + once() |
-| P2-04 | [L12→L13 Hop Container & Rules](phase2/P2-04-hop-12-to-13.md) | Rector/AST Engineer | 6-8d | Phase 1 Docker pattern | 🔲 | PHP 8.3 minimum guard |
-| P2-05 | [Multi-Hop Orchestration](phase2/P2-05-multi-hop-orchestration.md) | PHP Orchestrator Engineer | 10-12d | P2-01–P2-04, P1-10, P1-16 | 🔲 | Chain L8→L13 |
-| P2-06 | [Package Rule Sets](phase2/P2-06-package-rule-sets.md) | Rector/AST Engineer | 12-15d | P2-01, P1-06, P1-04 | 🔲 | Spatie, Livewire, Sanctum, etc. |
-| P2-07 | [CI/CD Integration Templates](phase2/P2-07-ci-cd-templates.md) | Docker/DevOps Engineer | 5-6d | P2-05, P1-19 | 🔲 | GH Actions, GitLab, Bitbucket |
-| P2-08 | [HTML Diff Viewer v2](phase2/P2-08-diff-viewer-v2.md) | Report & Documentation Engineer | 8-10d | P1-18, P2-05 | 🔲 | File tree, filters, PDF |
-| P2-09 | [Phase 2 Hardening & E2E](phase2/P2-09-phase2-hardening.md) | PHP QA Engineer | 5-7d | P2-01–P2-08 | 🔲 | E2E on 5 fixtures |
+| P2-01 | [L9→L10 Hop Container & Rules](phase2/P2-01-hop-9-to-10.md) | Rector/AST Engineer | 6-8d | Phase 1 Docker pattern | ✅ | Docker image + 2 custom rules + PackageRuleActivator + 17 tests; Rector fixture tests use direct AST (PHPStan compat) |
+| P2-02 | [L10→L11 Slim Skeleton Migration](phase2/P2-02-slim-skeleton.md) | Laravel Migration Specialist | 18-22d | P1-21 (design spike) | ✅ | SlimSkeleton 17 classes + Docker hop-10-to-11 + rector.l10-to-l11.php + 34 unit tests; PHPStan level 8 clean |
+| P2-03 | [L11→L12 Hop Container & Rules](phase2/P2-03-hop-11-to-12.md) | Rector/AST Engineer | 6-8d | Phase 1 Docker pattern | ✅ | Route binding + once() |
+| P2-04 | [L12→L13 Hop Container & Rules](phase2/P2-04-hop-12-to-13.md) | Rector/AST Engineer | 6-8d | Phase 1 Docker pattern | ✅ | PHP 8.3 minimum guard |
+| P2-05 | [Multi-Hop Orchestration](phase2/P2-05-multi-hop-orchestration.md) | PHP Orchestrator Engineer | 10-12d | P2-01–P2-04, P1-10, P1-16 | ✅ | MultiHopPlanner+ChainRunner+ChainResumeHandler+ChainEventAggregator; 9 src files + 4 test files; 60 new tests; 417 pass total |
+| P2-06 | [Package Rule Sets](phase2/P2-06-package-rule-sets.md) | Rector/AST Engineer | 12-15d | P2-01, P1-06, P1-04 | ✅ | PackageRuleActivator+PackageVersionMatrix; 9 package JSON matrices; rule classes for Spatie/Livewire/Sanctum/Passport/Filament/Nova/Horizon; 3 Rector configs; 36 tests pass; PHPStan level 8 clean |
+| P2-07 | [CI/CD Integration Templates](phase2/P2-07-ci-cd-templates.md) | Docker/DevOps Engineer | 5-6d | P2-05, P1-19 | ✅ | GH Actions + GitLab + Bitbucket templates; CiTemplateGenerator; README; 42 tests pass; PHPStan level 8 clean |
+| P2-08 | [HTML Diff Viewer v2](phase2/P2-08-diff-viewer-v2.md) | Report & Documentation Engineer | 8-10d | P1-18, P2-05 | ✅ | DiffViewerV2Generator + HopSectionRenderer + FileTreeRenderer + AnnotationRenderer + PdfExporter; Twig+CSS+JS; 42 tests pass; PHPStan level 8 clean |
+| P2-09 | [Phase 2 Hardening & E2E](phase2/P2-09-phase2-hardening.md) | PHP QA Engineer | 5-7d | P2-01–P2-08 | 🔄 | E2E scaffolding + chain-report path + slow CI job landed; host output-staging fix, Windows PHPStan harness fix, dependency-stage CLI fix, PHP 8.1 src-container compatibility fix, and offline composer-install fix (laravel-cache warmup stage + composer.lN-warmup.json added to all 5 hop Dockerfiles) validated. Next live step: rebuild all 5 hop images and rerun FixtureMinimalTest. |
 
 ---
 
@@ -67,6 +68,21 @@
 | P3-06 | [Silent Change Scanner](phase3/P3-06-silent-change-scanner.md) | Rector/AST Engineer | 8-10d | P3-02, P1-15 | 🔲 | Runtime behavior changes |
 | P3-07 | [Dashboard 2D Timeline](phase3/P3-07-dashboard-2d-timeline.md) | ReactPHP Engineer | 8-10d | P3-01, P1-17, P3-05, P3-06 | 🔲 | Two-row timeline + connectors |
 | P3-08 | [Phase 3 Hardening & Combined Testing](phase3/P3-08-phase3-hardening.md) | PHP QA Engineer | 10-12d | P3-01–P3-07 | 🔲 | 8-hop combined chain E2E |
+
+---
+
+## Post-Review Remediation Tasks
+
+| # | Task | Agent | Effort | Dependencies | Status | Notes |
+|---|---|---|---|---|---|---|
+| PR-01 | [Restore CLI bootstrap and Symfony Console help path](post-review-tasks/PR-01-restore-cli-bootstrap-help-path.md) | PHP Orchestrator Engineer | 0.5-1d | P1-01 | ✅ | Review finding from P1-01; fixed and revalidated |
+| PR-02 | [Add direct scaffold contract tests for P1-01](post-review-tasks/PR-02-add-p1-01-scaffold-contract-tests.md) | PHP QA Engineer | 0.5-1d | PR-01 | ✅ | Real binary/bootstrap coverage added |
+| PR-03 | [Consolidate PHPStan level configuration to phpstan.neon at level 6](post-review-tasks/PR-03-consolidate-phpstan-source-of-truth.md) | PHP Orchestrator Engineer | 0.5d | P1-01 | ✅ | User-requested single source of truth |
+| PR-04 | [P1-02 remote fetcher auth and lock compliance](post-review-tasks/PR-04-p1-02-remote-fetcher-auth-and-lock-compliance.md) | PHP Orchestrator Engineer | 1-2d | P1-02 | ✅ | Secure askpass flow and lock lifetime fixed |
+| PR-05 | [P1-02 fetcher test contract alignment](post-review-tasks/PR-05-p1-02-fetcher-test-contract-alignment.md) | PHP QA Engineer | 1-2d | PR-04 | ✅ | Deterministic subprocess-contract tests added |
+| PR-06 | [P1-03 workspace path normalization compliance](post-review-tasks/PR-06-p1-03-workspace-path-normalization-compliance.md) | PHP Orchestrator Engineer | 1d | P1-03 | ✅ | Constructor path-normalizer seam added; WSL-aware translation logic implemented |
+| PR-07 | [P1-03 applyDiffs checkpoint and new-file compliance](post-review-tasks/PR-07-p1-03-applydiffs-checkpoint-and-new-file-compliance.md) | PHP Orchestrator Engineer | 1-2d | P1-03 | ✅ | Parent-dir ordering fixed; per-file TransformCheckpoint updates added |
+| PR-08 | [P1-03 workspace test alignment](post-review-tasks/PR-08-p1-03-workspace-test-alignment.md) | PHP QA Engineer | 1d | PR-06, PR-07 | ✅ | Regression tests now cover new nested files, checkpoint writes, and checkpoint failures |
 
 ---
 

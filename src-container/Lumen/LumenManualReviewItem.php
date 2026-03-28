@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class LumenManualReviewItem
+final class LumenManualReviewItem
 {
     /**
      * @param 'route'|'provider'|'middleware'|'exception_handler'|'facade'|'config'|'eloquent'|'other' $category
@@ -44,6 +44,9 @@ final readonly class LumenManualReviewItem
         return new self('config', $file, $line, $description, 'info', $suggestion);
     }
 
+    /**
+     * @param 'error'|'warning'|'info' $severity
+     */
     public static function other(string $file, int $line, string $description, string $severity = 'info', string|null $suggestion = null): self
     {
         return new self('other', $file, $line, $description, $severity, $suggestion);

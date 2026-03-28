@@ -19,6 +19,8 @@ final class ConfigMigrator
     public function __construct(
         private readonly ConfigSnapshotManager $snapshotManager,
         private readonly ConfigMerger $merger,
+        private readonly EnvMigrator $envMigrator,
+        private readonly SafeConfigParser $configParser = new SafeConfigParser(),
     ) {}
 
     public function migrate(string $workspacePath): MigrationResult
@@ -37,9 +39,20 @@ final class ConfigMigrator
                 $appliedMigrations[] = $name;
                 $this->emit('config.migration_applied', ['migration' => $name]);
             }
+
+            // .env migration is inside the atomic block so snapshot rollback covers it
+            $envResult = $this->envMigrator->migrate($workspacePath);
+            if (!$envResult->success) {
+                throw new \RuntimeException('Env migration failed: ' . ($envResult->errorMessage ?? 'unknown'));
+            }
+            if ($envResult->renamedKeys !== [] || $envResult->addedKeys !== []) {
+                $appliedMigrations[] = 'env_migration';
+                $this->emit('config.migration_applied', ['migration' => 'env_migration']);
+            }
         } catch (\Throwable $e) {
             $this->emit('config.migration_rollback', ['reason' => $e->getMessage()]);
             $this->snapshotManager->restore($snapshotPath, $workspacePath);
+            $this->snapshotManager->cleanup($snapshotPath);
             return MigrationResult::failure($e->getMessage(), $snapshotPath);
         }
 
@@ -278,27 +291,14 @@ final class ConfigMigrator
     // -------------------------------------------------------------------------
 
     /**
-     * Safely include a Laravel config file outside of a running application.
-     * Defines stub implementations of `env()` and other helpers on first call.
+     * Safely parse a Laravel config file using AST analysis (no code execution).
      *
      * @return array<string, mixed>
-     * @throws \RuntimeException if the file does not return an array
+     * @throws \RuntimeException if the file cannot be parsed or doesn't return an array
      */
     private function loadConfigFile(string $path): array
     {
-        $this->ensureHelperStubs();
-
-        // phpcs:ignore SlevomatCodingStandard.Variables.UnusedVariable
-        $result = include $path;
-
-        if (!is_array($result)) {
-            throw new \RuntimeException(
-                "Config file does not return an array: {$path}"
-            );
-        }
-
-        /** @var array<string, mixed> $result */
-        return $result;
+        return $this->configParser->parse($path);
     }
 
     /**
@@ -320,16 +320,6 @@ final class ConfigMigrator
             @unlink($tmp);
             throw new \RuntimeException("Cannot rename config file {$tmp} → {$path}");
         }
-    }
-
-    /**
-     * Define stub implementations of Laravel helper functions so that
-     * config/*.php files can be include'd without a running framework.
-     * Uses require_once so the file is only evaluated once per process.
-     */
-    private function ensureHelperStubs(): void
-    {
-        require_once __DIR__ . '/config-stubs.php';
     }
 
     /**

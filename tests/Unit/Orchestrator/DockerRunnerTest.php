@@ -36,8 +36,11 @@ final class DockerRunnerTest extends TestCase
         self::assertContains('--rm', $command);
         self::assertContains('--network=none', $command);
         self::assertContains('-v', $command);
-        self::assertContains('/workspace/path:/repo:rw', $command);
-        self::assertContains('/output/path:/output:rw', $command);
+        // The pre-staged output directory is mounted as /repo so the container
+        // can transform it in-place. The original workspace is NOT mounted.
+        self::assertContains('/output/path:/repo:rw', $command);
+        self::assertNotContains('/workspace/path:/repo:rw', $command);
+        self::assertNotContains('/output/path:/output:rw', $command);
         self::assertContains('--env', $command);
         self::assertContains('UPGRADER_HOP_FROM=8', $command);
         self::assertContains('UPGRADER_HOP_TO=9', $command);

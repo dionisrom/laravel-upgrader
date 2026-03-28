@@ -1,0 +1,25 @@
+{
+    "name": "upgrader/hop-12-to-13",
+    "description": "Laravel 12 to 13 upgrade container dependencies",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "rector/rector": "^2.0",
+        "driftingly/rector-laravel": "^2.0",
+        "symfony/process": "^7.0",
+        "webmozart/assert": "^1.11"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": false
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "AppContainer\\": "src/"
+        }
+    }
+}

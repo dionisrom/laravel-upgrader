@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" data-chain-id="{{ chainId }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laravel {{ sourceVersion }}→{{ targetVersion }} Upgrade Report</title>
+  <style>
+{{ diff2htmlCss|raw }}
+{{ reportCss|raw }}
+  </style>
+</head>
+<body>
+
+  <!-- ================================================================
+       HEADER
+       ================================================================ -->
+  <header id="report-header" role="banner">
+    <div>
+      <h1>Laravel {{ sourceVersion }} → {{ targetVersion }} Upgrade Report</h1>
+      <p class="meta">
+        Chain: {{ chainId }} &bull;
+        {{ totalHops }} hop{% if totalHops != 1 %}s{% endif %} &bull;
+        {{ totalEvents }} events &bull;
+        Generated: {{ generatedAt }}
+      </p>
+    </div>
+    <div class="header-stats" aria-label="Summary statistics">
+      {% for section in hopSections %}
+        <span class="header-stat">
+          <strong>{{ section.hopKey }}:</strong>
+          {{ section.summary.filesChanged }} file{% if section.summary.filesChanged != 1 %}s{% endif %}
+          {% if section.summary.manualReview > 0 %}
+            &bull; <span style="color:#f7c948">{{ section.summary.manualReview }} review</span>
+          {% endif %}
+        </span>
+      {% endfor %}
+      <span class="header-actions">
+        <button id="export-notes-btn" class="header-btn" title="Export review notes as JSON">📥 Export Notes</button>
+        <button id="import-notes-btn" class="header-btn" title="Import review notes from JSON">📤 Import Notes</button>
+        <input type="file" id="import-notes-input" accept=".json" class="sr-only" aria-hidden="true">
+      </span>
+    </div>
+  </header>
+
+  <!-- ================================================================
+       HOP TABS
+       ================================================================ -->
+  {% if hopSections|length > 0 %}
+  <nav id="hop-tabs" role="tablist" aria-label="Upgrade hops">
+    <button class="hop-tab"
+            role="tab"
+            data-hop="__all__"
+            aria-selected="false"
+            aria-controls="all-hop-sections">
+      All Hops
+    </button>
+    {% for section in hopSections %}
+    <button class="hop-tab"
+            role="tab"
+            data-hop="{{ section.hopKey }}"
+            aria-selected="false"
+            aria-controls="hop-section-{{ loop.index }}">
+      L{{ section.from }} → L{{ section.to }}
+      <span class="hop-meta">{{ section.summary.filesChanged }} files</span>
+    </button>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  <!-- ================================================================
+       MAIN LAYOUT: sidebar + content
+       ================================================================ -->
+  <div id="layout">
+
+    <!-- Sidebar: file tree -->
+    <aside id="sidebar" role="complementary" aria-label="Changed files">
+      <div id="sidebar-header">
+        <span>Changed Files</span>
+        <span id="sidebar-file-count" aria-live="polite"></span>
+      </div>
+      <div id="sidebar-filter">
+        <input type="search"
+               id="sidebar-search"
+               placeholder="Filter files…"
+               aria-label="Search changed files">
+      </div>
+      <nav id="file-tree" aria-label="File tree">
+        {{ fileTreeHtml|raw }}
+      </nav>
+    </aside>
+
+    <!-- Content: filter bar + hop sections -->
+    <main id="content" role="main">
+
+      <!-- Filter bar -->
+      <div id="filter-bar" role="toolbar" aria-label="Filter diffs">
+        <label>Show:</label>
+
+        <button class="filter-btn filter-auto"   data-type="auto"   aria-pressed="true">🟢 Auto</button>
+        <button class="filter-btn filter-review" data-type="review" aria-pressed="true">🟡 Review</button>
+        <button class="filter-btn filter-manual" data-type="manual" aria-pressed="true">🔴 Manual</button>
+
+        <span class="filter-separator" aria-hidden="true">|</span>
+        <label>Confidence:</label>
+        <button class="filter-btn confidence-btn" data-confidence="high"   aria-pressed="true">High</button>
+        <button class="filter-btn confidence-btn" data-confidence="medium" aria-pressed="true">Medium</button>
+        <button class="filter-btn confidence-btn" data-confidence="low"    aria-pressed="true">Low</button>
+
+        <span class="filter-separator" aria-hidden="true">|</span>
+        <label for="filter-hop-input" class="sr-only">Filter by hop number</label>
+        <select id="filter-hop-input" aria-label="Filter by hop number">
+          <option value="">All hops</option>
+          {% for section in hopSections %}
+          <option value="{{ section.hopKey }}">{{ section.hopKey }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="filter-ext-input" class="sr-only">Filter by extension</label>
+        <input type="text"
+               id="filter-ext-input"
+               placeholder="Extension (php)"
+               aria-label="Filter by file extension">
+
+        <label for="filter-dir-input" class="sr-only">Filter by directory</label>
+        <input type="text"
+               id="filter-dir-input"
+               placeholder="Directory path"
+               aria-label="Filter by directory path">
+
+        <button id="filter-clear" class="filter-btn" aria-label="Clear all filters">✕ Clear</button>
+
+        <span id="filter-count" aria-live="polite" role="status"></span>
+      </div>
+
+      <!-- Hop sections -->
+      {% for section in hopSections %}
+      <section class="hop-section"
+               id="hop-section-{{ loop.index }}"
+               data-hop="{{ section.hopKey }}"
+               role="tabpanel"
+               aria-label="Hop {{ section.hopKey }}">
+
+        <!-- Hop summary bar -->
+        <div class="hop-summary" aria-label="Hop {{ section.hopKey }} summary">
+          <div class="hop-summary-stat">
+            <span class="stat-value">{{ section.summary.filesChanged }}</span>
+            <span class="stat-label">Files Changed</span>
+          </div>
+          <div class="hop-summary-stat">
+            <span class="stat-value">{{ section.summary.events }}</span>
+            <span class="stat-label">Events</span>
+          </div>
+          {% if section.summary.manualReview > 0 %}
+          <div class="hop-summary-stat">
+            <span class="stat-value" style="color:#9a6700">{{ section.summary.manualReview }}</span>
+            <span class="stat-label">Manual Review</span>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Pre-rendered file diff blocks -->
+        {{ section.html|raw }}
+
+      </section>
+      {% else %}
+      <div class="hop-empty" style="padding:40px;text-align:center;color:#57606a;">
+        <p>No hops to display.</p>
+      </div>
+      {% endfor %}
+
+    </main>
+  </div><!-- /#layout -->
+
+  <!-- ================================================================
+       INLINED JS: diff2html + report interactions
+       ================================================================ -->
+  <script>
+{{ diff2htmlJs|raw }}
+  </script>
+  <script>
+{{ reportJs|raw }}
+  </script>
+
+</body>
+</html>

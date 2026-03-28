@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Report;
 
+use AppContainer\Report\Formatters\AuditLogFormatter;
 use AppContainer\Report\Formatters\HtmlFormatter;
 use AppContainer\Report\Formatters\JsonFormatter;
 use AppContainer\Report\Formatters\MarkdownFormatter;
@@ -32,12 +33,14 @@ final class ReportBuilder
 
         $htmlFormatter     = new HtmlFormatter($this->assetsDir, $this->scorer);
         $jsonFormatter     = new JsonFormatter($this->scorer);
-        $markdownFormatter = new MarkdownFormatter();
+        $markdownFormatter = new MarkdownFormatter($this->scorer);
+        $auditFormatter    = new AuditLogFormatter();
 
         $files   = [];
         $files[] = $this->write('report.html', $htmlFormatter->format($data));
         $files[] = $this->write('report.json', $jsonFormatter->format($data));
         $files[] = $this->write('manual-review.md', $markdownFormatter->format($data));
+        $files[] = $this->write('audit.log.json', $auditFormatter->format($data));
 
         return $files;
     }

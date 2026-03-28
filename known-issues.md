@@ -96,3 +96,27 @@ bin/upgrader run --repo /path/to/app --from=9 --to=10
 The dashboard port is hardcoded at `8765`. If another service is bound to port 8765, the dashboard server will fail to start (logged as a warning; the upgrade run continues).
 
 **Workaround:** Stop any service using port 8765 before running, or pass `--no-dashboard` to disable the dashboard entirely. A `--dashboard-port` option is planned for Phase 2.
+
+---
+
+## KI-008 — Legacy Chain Checkpoints Omit Completed-Hop Diffs in Unified Reports
+
+**Severity:** Medium  
+**Affects:** Resumed Phase 2 chains created before P2-09
+
+Older `chain-checkpoint.json` files record completed hop output paths and events, but they do not store the hop input path needed to rebuild accurate directory diffs for the unified chain report. A resumed chain created from one of those legacy checkpoints will still finish correctly, but completed hops from the older checkpoint may show zero changed files in the unified HTML report.
+
+**Workaround:** Delete the old checkpoint directory and rerun the chain from the beginning when you need a fully accurate unified diff report. New checkpoints written after P2-09 include hop input paths and do not have this limitation.
+
+---
+
+## KI-009 — E2E Memory Budget Uses Observed Cgroup Peak, Not a Hard Docker Limit
+
+**Severity:** Medium  
+**Affects:** `tests/E2E/PerformanceBenchmark.php`, slow Phase 2 Docker E2E evidence
+
+The slow E2E benchmark now reads per-hop `container_resource_usage` events emitted from inside each hop container using cgroup memory telemetry. This proves the observed memory peak for each exercised hop during that run.
+
+What it still does not do is apply a hard Docker `--memory=512m` limit at container launch time. In other words, the benchmark is now measuring real container memory usage rather than the host PHPUnit process, but it is still observational evidence from the executed run rather than a kernel-enforced limit.
+
+**Workaround:** In CI, pair `composer test:e2e` with `docker stats --no-stream` or equivalent host-side container telemetry if you need hard per-container memory enforcement.

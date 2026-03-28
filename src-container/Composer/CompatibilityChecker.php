@@ -10,10 +10,10 @@ final class CompatibilityChecker
 {
     private const DATA_FILE = __DIR__ . '/package-compatibility.json';
 
-    /** @var array<string, array{l9_support: bool|string, l10_support: bool|string, recommended_version: string|null, notes: string}> */
+    /** @var array<string, array{support: bool|string, recommended_version: string|null, notes: string}> */
     private array $packages;
 
-    public function __construct()
+    public function __construct(private readonly ?string $dataFile = null)
     {
         $this->packages = $this->loadCompatibilityData();
     }
@@ -23,7 +23,7 @@ final class CompatibilityChecker
         if (!isset($this->packages[$package])) {
             return new PackageCompatibility(
                 package: $package,
-                l9Support: 'unknown',
+                support: 'unknown',
                 recommendedVersion: null,
                 notes: 'Package not found in compatibility matrix.',
             );
@@ -33,7 +33,7 @@ final class CompatibilityChecker
 
         return new PackageCompatibility(
             package: $package,
-            l9Support: $entry['l9_support'],
+            support: $entry['support'],
             recommendedVersion: $entry['recommended_version'],
             notes: $entry['notes'],
         );
@@ -45,17 +45,19 @@ final class CompatibilityChecker
     }
 
     /**
-     * @return array<string, array{l9_support: bool|string, l10_support: bool|string, recommended_version: string|null, notes: string}>
+     * @return array<string, array{support: bool|string, recommended_version: string|null, notes: string}>
      */
     private function loadCompatibilityData(): array
     {
-        if (!file_exists(self::DATA_FILE)) {
+        $path = $this->dataFile ?? self::DATA_FILE;
+
+        if (!file_exists($path)) {
             throw new CompatibilityDataException(
-                'package-compatibility.json not found at: ' . self::DATA_FILE
+                'package-compatibility.json not found at: ' . $path
             );
         }
 
-        $raw = file_get_contents(self::DATA_FILE);
+        $raw = file_get_contents($path);
 
         if ($raw === false) {
             throw new CompatibilityDataException(
@@ -78,7 +80,7 @@ final class CompatibilityChecker
             );
         }
 
-        /** @var array<string, array{l9_support: bool|string, l10_support: bool|string, recommended_version: string|null, notes: string}> */
+        /** @var array<string, array{support: bool|string, recommended_version: string|null, notes: string}> */
         return $decoded['packages'];
     }
 }

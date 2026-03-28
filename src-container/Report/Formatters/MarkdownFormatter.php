@@ -9,12 +9,9 @@ use AppContainer\Report\ReportData;
 
 final class MarkdownFormatter
 {
-    private ConfidenceScorer $scorer;
-
-    public function __construct()
-    {
-        $this->scorer = new ConfidenceScorer();
-    }
+    public function __construct(
+        private readonly ConfidenceScorer $scorer,
+    ) {}
 
     /**
      * Produce `manual-review.md` sorted by severity descending (blockers/high first).
@@ -72,16 +69,16 @@ final class MarkdownFormatter
     private function buildHeader(ReportData $data, int $score, string $label): string
     {
         return <<<MD
-        # Manual Review Required — {$data->repoName} L{$data->fromVersion}→L{$data->toVersion}
+# Manual Review Required — {$data->repoName} L{$data->fromVersion}→L{$data->toVersion}
 
-        Generated: {$data->timestamp}
-        Confidence: {$score}% ({$label})
+Generated: {$data->timestamp}
+Confidence: {$score}% ({$label})
 
-        MD;
+MD;
     }
 
     /**
-     * @param array{id: string, automated: bool, reason: string, files: list<string>} $item
+     * @param array{id: string, automated: bool, reason: string, files: list<string>, snippet?: string} $item
      */
     private function renderItem(array $item, string $displayLabel): string
     {
@@ -90,15 +87,20 @@ final class MarkdownFormatter
         $files  = array_map(fn(string $f) => "- `{$f}`", $item['files']);
         $fileList = implode("\n", $files);
 
+        $snippet = '';
+        if (!empty($item['snippet'])) {
+            $snippet = "\n**Code:**\n```php\n{$item['snippet']}\n```\n";
+        }
+
         return <<<MD
-        ### {$displayLabel}: {$id}
-        **Description:** {$reason}
-        **Files:**
-        {$fileList}
+### {$displayLabel}: {$id}
+**Description:** {$reason}
+**Files:**
+{$fileList}
+{$snippet}
+---
 
-        ---
-
-        MD;
+MD;
     }
 
     /**

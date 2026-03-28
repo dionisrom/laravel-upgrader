@@ -90,6 +90,45 @@ final class HtmlFormatterTest extends TestCase
         $this->assertStringContainsString('BC-001', $output);
     }
 
+    public function testPerFileConfidenceBadgeRendered(): void
+    {
+        $diffs = [
+            ['file' => 'app/Clean.php', 'diff' => "@@ -1,1 +1,1 @@\n-old\n+new", 'rules' => ['RULE-1']],
+        ];
+        $formatter = new HtmlFormatter($this->stubAssetsDir, new ConfidenceScorer());
+        $output    = $formatter->format($this->makeData(fileDiffs: $diffs));
+        $this->assertStringContainsString('100%', $output);
+        $this->assertStringContainsString('High', $output);
+    }
+
+    public function testBcPrefixItemRenderedAsBlocker(): void
+    {
+        $data = new ReportData(
+            repoName:            'acme/app',
+            fromVersion:         '8',
+            toVersion:           '9',
+            runId:               'test-run-001',
+            repoSha:             'abc123',
+            hostVersion:         '1.0.0',
+            timestamp:           '2024-01-01T00:00:00Z',
+            fileDiffs:           [],
+            manualReviewItems:   [
+                ['id' => 'BC-001', 'automated' => false, 'reason' => 'Method removed', 'files' => ['app/Foo.php']],
+            ],
+            dependencyBlockers:  [],
+            phpstanRegressions:  [],
+            verificationResults: [],
+            auditEvents:        [],
+            hasSyntaxError:      false,
+            totalFilesScanned:   10,
+            totalFilesChanged:   1,
+        );
+        $formatter = new HtmlFormatter($this->stubAssetsDir, new ConfidenceScorer());
+        $output    = $formatter->format($data);
+        $this->assertStringContainsString('BLOCKER', $output);
+        $this->assertStringContainsString('blocker', $output);
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

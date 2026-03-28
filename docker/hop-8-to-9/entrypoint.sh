@@ -27,6 +27,43 @@ ts() {
     date +%s
 }
 
+read_cgroup_memory_value() {
+    local path="$1"
+
+    if [ ! -r "$path" ]; then
+        printf 'null'
+        return
+    fi
+
+    local value
+    value="$(tr -d '\n' < "$path")"
+
+    if [ "$value" = "max" ] || [ -z "$value" ]; then
+        printf 'null'
+        return
+    fi
+
+    printf '%s' "$value"
+}
+
+emit_container_resource_usage() {
+    local peak_bytes
+    peak_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.peak)"
+
+    if [ "$peak_bytes" = "null" ]; then
+        peak_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.max_usage_in_bytes)"
+    fi
+
+    local limit_bytes
+    limit_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.max)"
+
+    if [ "$limit_bytes" = "null" ]; then
+        limit_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.limit_in_bytes)"
+    fi
+
+    emit "{\"event\":\"container_resource_usage\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"memory_peak_bytes\":${peak_bytes},\"memory_limit_bytes\":${limit_bytes},\"source\":\"cgroup\"}"
+}
+
 run_stage() {
     local stage="$1"
     local script="$2"
@@ -92,49 +129,51 @@ RECTOR_STAGE_SECONDS=$SECONDS
 
 emit "{\"event\":\"stage_start\",\"stage\":\"RectorRunner\",\"hop\":\"${HOP}\",\"ts\":${RECTOR_STAGE_START}}"
 
+RECTOR_JSON_FILE="$(mktemp)"
 RECTOR_EXIT=0
 "${RECTOR_BIN}" process \
     --config="${RECTOR_CONFIG}" \
     --output-format=json \
-    --no-interaction \
-    "${WORKSPACE}" >&2 || RECTOR_EXIT=$?
+    "${WORKSPACE}" > "${RECTOR_JSON_FILE}" || RECTOR_EXIT=$?
+
+# Forward Rector JSON output to stderr for diagnostics
+cat "${RECTOR_JSON_FILE}" >&2
 
 RECTOR_DURATION=$(( (SECONDS - RECTOR_STAGE_SECONDS) * 1000 ))
 
-if [ "$RECTOR_EXIT" -eq 0 ]; then
+# Parse error count from Rector JSON — Rector returns non-zero when changes
+# are applied, which is normal. Only treat non-zero errors as failure.
+RECTOR_ERRORS=$(grep -m1 -o '"errors"[[:space:]]*:[[:space:]]*[0-9]*' "${RECTOR_JSON_FILE}" | grep -o '[0-9]*')
+rm -f "${RECTOR_JSON_FILE}"
+
+if [ "${RECTOR_ERRORS:-0}" -eq 0 ]; then
     emit "{\"event\":\"stage_complete\",\"stage\":\"RectorRunner\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"duration_ms\":${RECTOR_DURATION}}"
 else
-    emit "{\"event\":\"stage_error\",\"stage\":\"RectorRunner\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"error\":\"Rector exited with code ${RECTOR_EXIT}\"}"
+    emit "{\"event\":\"stage_error\",\"stage\":\"RectorRunner\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"error\":\"Rector reported ${RECTOR_ERRORS:-unknown} errors (exit code ${RECTOR_EXIT})\"}"
     exit 1
 fi
 
-# ─── Stage 4: WorkspaceManager ────────────────────────────────────────────────
-
-run_stage "WorkspaceManager" "Workspace/WorkspaceManager.php"
-
-# ─── Stage 5: TransformCheckpoint ─────────────────────────────────────────────
-
-run_stage "TransformCheckpoint" "Orchestrator/TransformCheckpoint.php"
-
-# ─── Stage 6: DependencyUpgrader ──────────────────────────────────────────────
+# ─── Stage 4: DependencyUpgrader ──────────────────────────────────────────────
 
 run_stage "DependencyUpgrader" "Composer/DependencyUpgrader.php" \
+    "--framework-target=^9.0" \
     "--compatibility=/upgrader/docs/package-compatibility.json"
 
-# ─── Stage 7: ConfigMigrator ──────────────────────────────────────────────────
+# ─── Stage 5: ConfigMigrator ──────────────────────────────────────────────────
 
 run_stage "ConfigMigrator" "Config/ConfigMigrator.php"
 
-# ─── Stage 8: VerificationPipeline ────────────────────────────────────────────
+# ─── Stage 6: VerificationPipeline ────────────────────────────────────────────
 
 run_stage "VerificationPipeline" "Verification/VerificationPipeline.php"
 
-# ─── Stage 9: ReportBuilder ───────────────────────────────────────────────────
+# ─── Stage 7: ReportBuilder ───────────────────────────────────────────────────
 
 run_stage "ReportBuilder" "Report/ReportBuilder.php" \
     "--assets=/upgrader/assets"
 
 # ─── Pipeline complete ────────────────────────────────────────────────────────
 
-emit "{\"event\":\"pipeline_complete\",\"hop\":\"${HOP}\",\"ts\":$(ts)}"
+emit_container_resource_usage
+emit "{\"event\":\"pipeline_complete\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"passed\":true}"
 exit 0

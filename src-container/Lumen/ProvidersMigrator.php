@@ -94,7 +94,8 @@ final class ProvidersMigrator
             $className = $reg['class'];
 
             // Skip Lumen built-ins already present in the Laravel scaffold
-            if (in_array($className, self::LUMEN_BUILTIN_PROVIDERS, true)) {
+            $normalised = ltrim($className, '\\');
+            if (in_array($normalised, self::LUMEN_BUILTIN_PROVIDERS, true)) {
                 continue;
             }
 

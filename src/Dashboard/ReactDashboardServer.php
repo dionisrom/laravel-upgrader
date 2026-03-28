@@ -16,6 +16,7 @@ final class ReactDashboardServer
 {
     private ?SocketServer $socket = null;
     private ?LoopInterface $loop = null;
+    private ?\React\EventLoop\TimerInterface $heartbeatTimer = null;
 
     public function __construct(
         private readonly EventBus $eventBus,
@@ -44,6 +45,11 @@ final class ReactDashboardServer
 
         $http->listen($this->socket);
 
+        // Periodic heartbeat every 30s to detect stale clients
+        $this->heartbeatTimer = $this->loop->addPeriodicTimer(30, function (): void {
+            $this->eventBus->broadcast(['event' => 'heartbeat', 'ts' => time()]);
+        });
+
         $this->loop->run();
     }
 
@@ -62,6 +68,10 @@ final class ReactDashboardServer
      */
     public function stop(): void
     {
+        if ($this->heartbeatTimer !== null && $this->loop !== null) {
+            $this->loop->cancelTimer($this->heartbeatTimer);
+            $this->heartbeatTimer = null;
+        }
         $this->socket?->close();
         $this->loop?->stop();
     }
@@ -74,19 +84,30 @@ final class ReactDashboardServer
     public function openBrowser(): void
     {
         $url = "http://{$this->host}:{$this->port}";
+        $escaped = escapeshellarg($url);
         $os = PHP_OS_FAMILY;
-        $cmd = match (true) {
-            $os === 'Linux'  => "xdg-open {$url}",
-            $os === 'Darwin' => "open {$url}",
-            default          => "start {$url}",
+
+        $cmd = match ($os) {
+            'Linux'   => "xdg-open {$escaped} > /dev/null 2>&1 &",
+            'Darwin'  => "open {$escaped} > /dev/null 2>&1 &",
+            'Windows' => "start \"\" {$escaped}",
+            default   => "xdg-open {$escaped} > /dev/null 2>&1 &",
         };
-        // Run in background, suppress output
-        shell_exec($cmd . ' > /dev/null 2>&1 &');
+
+        if ($os === 'Windows') {
+            pclose(popen($cmd, 'r'));
+        } else {
+            shell_exec($cmd);
+        }
     }
 
     private function handleRequest(ServerRequestInterface $request): Response
     {
         $path = $request->getUri()->getPath();
+
+        if (str_starts_with($path, '/static/')) {
+            return $this->serveStatic($path);
+        }
 
         return match ($path) {
             '/'        => $this->serveIndex(),
@@ -98,6 +119,48 @@ final class ReactDashboardServer
                 json_encode(['error' => 'not found']) ?: '{"error":"not found"}',
             ),
         };
+    }
+
+    private function serveStatic(string $path): Response
+    {
+        // Strip /static/ prefix, resolve relative to publicPath
+        $relative = substr($path, strlen('/static/'));
+        $realPublic = realpath($this->publicPath);
+
+        if ($realPublic === false || $relative === '' || $relative === false) {
+            return new Response(404, ['Content-Type' => 'text/plain'], 'Not found');
+        }
+
+        $filePath = realpath($this->publicPath . DIRECTORY_SEPARATOR . $relative);
+
+        // Prevent directory traversal
+        if ($filePath === false || !str_starts_with($filePath, $realPublic . DIRECTORY_SEPARATOR)) {
+            return new Response(404, ['Content-Type' => 'text/plain'], 'Not found');
+        }
+
+        if (!is_file($filePath)) {
+            return new Response(404, ['Content-Type' => 'text/plain'], 'Not found');
+        }
+
+        $ext = pathinfo($filePath, PATHINFO_EXTENSION);
+        $mimeTypes = [
+            'css'  => 'text/css',
+            'js'   => 'application/javascript',
+            'json' => 'application/json',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'svg'  => 'image/svg+xml',
+            'ico'  => 'image/x-icon',
+        ];
+        $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+
+        $content = file_get_contents($filePath);
+
+        return new Response(
+            200,
+            ['Content-Type' => $contentType],
+            $content !== false ? $content : '',
+        );
     }
 
     private function serveIndex(): Response

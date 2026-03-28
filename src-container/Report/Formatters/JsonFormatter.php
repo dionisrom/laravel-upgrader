@@ -78,11 +78,31 @@ final class JsonFormatter
             'manual_review_items'  => $manualReviewItems,
             'dependency_blockers'  => $dependencyBlockers,
             'verification_results' => $verificationResults,
+            'file_scores'          => $this->buildFileScores($data),
         ];
 
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         return $json === false ? '{}' : $json;
+    }
+
+    /**
+     * Build per-file confidence scores for all changed files.
+     *
+     * @return list<array{file: string, score: int, label: string}>
+     */
+    private function buildFileScores(ReportData $data): array
+    {
+        $scores = [];
+        foreach ($data->fileDiffs as $diff) {
+            $score    = $this->scorer->fileScore($diff['file'], $data);
+            $scores[] = [
+                'file'  => $diff['file'],
+                'score' => $score,
+                'label' => $this->scorer->label($score),
+            ];
+        }
+        return $scores;
     }
 
     /**

@@ -132,7 +132,7 @@ class BreakingChangeRegistry
      */
     private function validate(array $data): void
     {
-        $requiredTopLevel = ['hop', 'laravel_from', 'laravel_to', 'breaking_changes'];
+        $requiredTopLevel = ['hop', 'laravel_from', 'laravel_to', 'php_minimum', 'last_curated', 'breaking_changes'];
 
         foreach ($requiredTopLevel as $key) {
             if (!array_key_exists($key, $data)) {
@@ -146,7 +146,11 @@ class BreakingChangeRegistry
 
         $validSeverities = ['blocker', 'high', 'medium', 'low'];
         $validCategories = ['eloquent', 'routing', 'middleware', 'config', 'helpers', 'environment', 'package', 'lumen'];
-        $requiredEntryKeys = ['id', 'severity', 'category', 'title', 'automated'];
+        $requiredEntryKeys = [
+            'id', 'severity', 'category', 'title', 'description',
+            'rector_rule', 'automated', 'affects_lumen', 'manual_review_required',
+            'migration_example', 'official_doc_anchor',
+        ];
         $seenIds = [];
 
         foreach ($data['breaking_changes'] as $index => $entry) {
@@ -191,6 +195,24 @@ class BreakingChangeRegistry
                 throw new RegistryCorruptException(
                     "breaking_changes[{$index}] invalid category '{$entry['category']}'. "
                     . "Must be one of: " . implode(', ', $validCategories)
+                );
+            }
+
+            if (!is_array($entry['migration_example'])) {
+                throw new RegistryCorruptException(
+                    "breaking_changes[{$index}] 'migration_example' must be a JSON object."
+                );
+            }
+
+            if (!array_key_exists('before', $entry['migration_example'])) {
+                throw new RegistryCorruptException(
+                    "breaking_changes[{$index}] 'migration_example' missing 'before'."
+                );
+            }
+
+            if (!array_key_exists('after', $entry['migration_example'])) {
+                throw new RegistryCorruptException(
+                    "breaking_changes[{$index}] 'migration_example' missing 'after'."
                 );
             }
         }

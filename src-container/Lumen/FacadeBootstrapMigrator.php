@@ -41,14 +41,8 @@ final class FacadeBootstrapMigrator
             ]);
         }
 
-        if (!$eloquentFound) {
-            $this->emitEvent('lumen_feature_disabled', [
-                'feature'     => 'eloquent',
-                'workspace'   => $workspacePath,
-                'description' => '$app->withEloquent() was NOT called — Eloquent was disabled in Lumen '
-                    . 'but WILL be active in the migrated Laravel app. Verify database config is present.',
-            ]);
-        }
+        // Note: eloquent detection is handled by EloquentBootstrapDetector
+        // to avoid duplicate lumen_feature_disabled events.
 
         $result = FacadeBootstrapResult::fromDetection($facadesFound, $eloquentFound);
         $this->emitSummary($result);

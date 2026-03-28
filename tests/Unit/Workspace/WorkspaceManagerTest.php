@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Workspace;
 
+use App\Orchestrator\State\TransformCheckpoint;
 use App\Workspace\ApplyResult;
 use App\Workspace\WorkspaceManager;
 use PHPUnit\Framework\TestCase;
@@ -76,6 +77,26 @@ final class WorkspaceManagerTest extends TestCase
         $this->manager->createWorkspace('/nonexistent/path/that/does/not/exist', '10');
     }
 
+    public function testCreateWorkspaceThrowsConcurrentUpgradeExceptionWhenLockHeld(): void
+    {
+        $repoPath = $this->makeFixtureRepo();
+
+        // First workspace acquires the lock
+        $workspace1 = $this->manager->createWorkspace($repoPath, '10');
+
+        // Second manager instance trying the same repo should fail
+        $manager2 = new WorkspaceManager();
+
+        $this->expectException(\App\Workspace\Exception\ConcurrentUpgradeException::class);
+        $this->expectExceptionMessage('Another upgrade is already running for this repository.');
+
+        try {
+            $manager2->createWorkspace($repoPath, '10');
+        } finally {
+            $this->manager->cleanup($workspace1);
+        }
+    }
+
     // -----------------------------------------------------------------------
     // applyDiffs
     // -----------------------------------------------------------------------
@@ -87,16 +108,205 @@ final class WorkspaceManagerTest extends TestCase
         $diffs = [
             [
                 'file' => 'app/Foo.php',
-                'diff' => $this->makeAddLineDiff("<?php\nclass Foo {}\n", "<?php\nclass Foo\n{\n}\n"),
+                'diff' => $this->makeUnifiedDiff("<?php\nclass Foo {}\n", "<?php\nclass Foo\n{\n}\n", 'app/Foo.php'),
                 'appliedRectors' => ['Rector\\CodingStyle\\Rector\\Class_\\AddBracesRector'],
             ],
         ];
 
         $result = $this->manager->applyDiffs($workspacePath, $diffs);
 
-        // applyDiffs may apply or skip depending on diff parsing — main check: no crash, returns ApplyResult
         $this->assertInstanceOf(ApplyResult::class, $result);
+        $this->assertSame(1, $result->appliedCount);
         $this->assertSame(0, $result->failedCount);
+        $this->assertStringContainsString("class Foo\n{\n}\n", (string) file_get_contents($workspacePath . '/app/Foo.php'));
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testApplyDiffsCreatesNewFileInMissingNestedDirectory(): void
+    {
+        $workspacePath = $this->tempBase . '/ws-' . uniqid('', true);
+        mkdir($workspacePath, 0700, true);
+
+        $newContent = "<?php\nreturn true;\n";
+        $diffs = [
+            [
+                'file' => 'app/Nested/NewFile.php',
+                'diff' => $this->makeUnifiedDiff('', $newContent, 'app/Nested/NewFile.php'),
+                'appliedRectors' => ['CreateNestedFileRector'],
+            ],
+        ];
+
+        $result = $this->manager->applyDiffs($workspacePath, $diffs);
+
+        $this->assertSame(1, $result->appliedCount);
+        $this->assertSame(0, $result->failedCount);
+        $this->assertFileExists($workspacePath . '/app/Nested/NewFile.php');
+        $this->assertSame($newContent, file_get_contents($workspacePath . '/app/Nested/NewFile.php'));
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testApplyDiffsEmitsFileChangedEvents(): void
+    {
+        $events = [];
+        $manager = new WorkspaceManager(null, null, static function (array $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $workspacePath = $this->makeWorkspaceWithFile('app/Foo.php', "<?php\necho 1;\n");
+
+        $diffs = [
+            [
+                'file' => 'app/Foo.php',
+                'diff' => $this->makeUnifiedDiff("<?php\necho 1;\n", "<?php\necho 2;\n", 'app/Foo.php'),
+                'appliedRectors' => ['UpdateEchoRector'],
+            ],
+        ];
+
+        $manager->applyDiffs($workspacePath, $diffs);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('file_changed', $events[0]['event']);
+        $this->assertSame('app/Foo.php', $events[0]['file']);
+        $this->assertSame(['UpdateEchoRector'], $events[0]['rules']);
+
+        $manager->cleanup($workspacePath);
+    }
+
+    public function testApplyDiffsEmitsPipelineErrorOnSyntaxFailure(): void
+    {
+        $events = [];
+        $manager = new WorkspaceManager(null, null, static function (array $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        $workspacePath = $this->makeWorkspaceWithFile('app/Bad.php', "<?php\necho 'ok';\n");
+
+        $badDiff = "--- a/app/Bad.php\n+++ b/app/Bad.php\n@@ -1,2 +1,2 @@\n <?php\n-echo 'ok';\n+THIS IS NOT VALID PHP <??\n";
+
+        $diffs = [
+            ['file' => 'app/Bad.php', 'diff' => $badDiff, 'appliedRectors' => []],
+        ];
+
+        $manager->applyDiffs($workspacePath, $diffs);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('pipeline_error', $events[0]['event']);
+        $this->assertSame('app/Bad.php', $events[0]['file']);
+
+        $manager->cleanup($workspacePath);
+    }
+
+    public function testApplyDiffsWritesTransformCheckpointForSuccessfulFile(): void
+    {
+        $workspacePath = $this->makeWorkspaceWithFile('app/Foo.php', "<?php\necho 1;\n");
+
+        $diffs = [
+            [
+                'file' => 'app/Foo.php',
+                'diff' => $this->makeUnifiedDiff("<?php\necho 1;\n", "<?php\necho 2;\n", 'app/Foo.php'),
+                'appliedRectors' => ['UpdateEchoRector'],
+            ],
+        ];
+
+        $result = $this->manager->applyDiffs($workspacePath, $diffs);
+        $checkpoint = (new TransformCheckpoint($workspacePath))->read();
+
+        $this->assertSame(1, $result->appliedCount);
+        $this->assertNotNull($checkpoint);
+        $this->assertSame('workspace_apply', $checkpoint->hop);
+        $this->assertSame(['UpdateEchoRector'], $checkpoint->completedRules);
+        $this->assertArrayHasKey('app/Foo.php', $checkpoint->filesHashed);
+        $this->assertSame(
+            'sha256:' . hash('sha256', (string) file_get_contents($workspacePath . '/app/Foo.php')),
+            $checkpoint->filesHashed['app/Foo.php']
+        );
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testApplyDiffsHaltsWhenCheckpointUpdateFailsAndKeepsLastValidCheckpoint(): void
+    {
+        $workspacePath = $this->makeWorkspaceWithFile('app/Foo.php', "<?php\necho 1;\n");
+        $checkpoint = new TransformCheckpoint($workspacePath);
+        $checkpoint->write('workspace_apply', ['ExistingRule'], [], ['app/Existing.php' => 'sha256:abc']);
+
+        $events = [];
+        $manager = new WorkspaceManager(
+            null,
+            static function (string $_workspacePath, string $_relativeFile, array $_appliedRectors, string $_absolutePath): void {
+                throw new \RuntimeException('checkpoint write failed');
+            },
+            static function (array $event) use (&$events): void {
+                $events[] = $event;
+            }
+        );
+
+        $diffs = [
+            [
+                'file' => 'app/Foo.php',
+                'diff' => $this->makeUnifiedDiff("<?php\necho 1;\n", "<?php\necho 2;\n", 'app/Foo.php'),
+                'appliedRectors' => ['UpdateEchoRector'],
+            ],
+            [
+                'file' => 'app/Bar.php',
+                'diff' => $this->makeUnifiedDiff('', "<?php\necho 3;\n", 'app/Bar.php'),
+                'appliedRectors' => ['CreateBarRector'],
+            ],
+        ];
+
+        $result = $manager->applyDiffs($workspacePath, $diffs);
+
+        $persistedCheckpoint = (new TransformCheckpoint($workspacePath))->read();
+
+        $this->assertSame(1, $result->failedCount);
+        $this->assertSame('app/Foo.php', $result->failedFile);
+        $this->assertNotNull($persistedCheckpoint);
+        $this->assertSame(['ExistingRule'], $persistedCheckpoint->completedRules);
+        $this->assertSame(['app/Existing.php' => 'sha256:abc'], $persistedCheckpoint->filesHashed);
+        $this->assertFileDoesNotExist($workspacePath . '/app/Bar.php');
+
+        $pipelineErrors = array_filter($events, fn(array $e) => $e['event'] === 'pipeline_error');
+        $fileChanged = array_filter($events, fn(array $e) => $e['event'] === 'file_changed');
+        $this->assertCount(1, $pipelineErrors);
+        $this->assertCount(0, $fileChanged);
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testCreateWorkspaceUsesConfiguredPathNormalizer(): void
+    {
+        $repoPath = $this->makeFixtureRepo();
+        $windowsPath = 'C:\\projects\\demo-repo';
+
+        $manager = new WorkspaceManager(
+            static function (string $path) use ($repoPath): string {
+                $normalized = str_replace('\\', '/', $path);
+
+                return $normalized === 'C:/projects/demo-repo'
+                    ? str_replace('\\', '/', $repoPath)
+                    : $normalized;
+            }
+        );
+
+        $workspacePath = $manager->createWorkspace($windowsPath, '10');
+
+        $this->assertDirectoryExists($workspacePath);
+
+        $manager->cleanup($workspacePath);
+    }
+
+    public function testCreateWorkspaceSetsSecurePermissionsOnNonWindows(): void
+    {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $this->markTestSkipped('POSIX permission bits are not reliable on Windows.');
+        }
+
+        $repoPath = $this->makeFixtureRepo();
+        $workspacePath = $this->manager->createWorkspace($repoPath, '10');
+
+        $this->assertSame(0700, fileperms($workspacePath) & 0777);
 
         $this->manager->cleanup($workspacePath);
     }
@@ -177,6 +387,48 @@ final class WorkspaceManagerTest extends TestCase
         $this->manager->writeBack($workspacePath, $repoPath);
 
         $this->assertSame("<?php // v2\n", file_get_contents($repoPath . '/original.php'));
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testWriteBackRemovesStaleFilesFromOriginalRepo(): void
+    {
+        $repoPath = $this->makeFixtureRepo();
+        file_put_contents($repoPath . '/keep.php', "<?php // keep\n");
+        file_put_contents($repoPath . '/stale.php', "<?php // stale\n");
+
+        $workspacePath = $this->manager->createWorkspace($repoPath, '10');
+
+        // Delete stale.php in workspace (simulating a rename/removal during upgrade)
+        unlink($workspacePath . '/stale.php');
+
+        $this->manager->writeBack($workspacePath, $repoPath);
+
+        $this->assertFileExists($repoPath . '/keep.php');
+        $this->assertFileDoesNotExist($repoPath . '/stale.php');
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testWriteBackPreservesGitDirectory(): void
+    {
+        $repoPath = $this->makeFixtureRepo();
+        mkdir($repoPath . '/.git', 0700, true);
+        file_put_contents($repoPath . '/.git/HEAD', "ref: refs/heads/main\n");
+        file_put_contents($repoPath . '/app/Model.php', "<?php\n");
+
+        $workspacePath = $this->manager->createWorkspace($repoPath, '10');
+
+        // Workspace won't have .git (it's a copy of repo files, .git may or may not be copied)
+        // Remove .git from workspace if it was copied to simulate typical behavior
+        if (is_dir($workspacePath . '/.git')) {
+            $this->removeDirectory($workspacePath . '/.git');
+        }
+
+        $this->manager->writeBack($workspacePath, $repoPath);
+
+        // .git must survive write-back
+        $this->assertFileExists($repoPath . '/.git/HEAD');
 
         $this->manager->cleanup($workspacePath);
     }
@@ -292,10 +544,10 @@ final class WorkspaceManagerTest extends TestCase
      * Returns a minimal unified diff that changes $original to $new using
      * a trivial full-file replacement hunk (sufficient for test assertions).
      */
-    private function makeAddLineDiff(string $original, string $new): string
+    private function makeUnifiedDiff(string $original, string $new, string $filename = 'file'): string
     {
         $generator = new \App\Workspace\DiffGenerator();
-        return $generator->generateUnifiedDiff($original, $new, 'file');
+        return $generator->generateUnifiedDiff($original, $new, $filename);
     }
 
     private function removeDirectory(string $path): void

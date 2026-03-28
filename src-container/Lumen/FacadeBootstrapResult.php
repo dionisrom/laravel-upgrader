@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class FacadeBootstrapResult
+final class FacadeBootstrapResult
 {
     public function __construct(
         public readonly bool $facadesEnabled,

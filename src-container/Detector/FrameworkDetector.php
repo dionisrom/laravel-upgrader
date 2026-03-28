@@ -36,14 +36,14 @@ final class FrameworkDetector
             );
         }
 
-        /** @var array{require?: array<string, string>} $composer */
+        /** @var array{require?: array<string, string>, require-dev?: array<string, string>} $composer */
         $composer = json_decode($contents, true);
 
         if (!is_array($composer)) {
             throw new DetectionException('composer.json is malformed');
         }
 
-        $hasLumenPackage = isset($composer['require']['laravel/lumen-framework']);
+        $hasLumenPackage = self::composerDeclaresLumen($composer);
 
         $bootstrapFile = $workspacePath . '/bootstrap/app.php';
         $hasLumenBootstrap = file_exists($bootstrapFile)
@@ -75,5 +75,14 @@ final class FrameworkDetector
         ];
 
         echo json_encode($event) . "\n";
+    }
+
+    /**
+     * @param array{require?: array<string, string>, require-dev?: array<string, string>} $composer
+     */
+    public static function composerDeclaresLumen(array $composer): bool
+    {
+        return isset($composer['require']['laravel/lumen-framework'])
+            || isset($composer['require-dev']['laravel/lumen-framework']);
     }
 }

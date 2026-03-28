@@ -16,6 +16,11 @@ final class DashboardCommand extends Command
     protected static string $defaultName = 'dashboard';
     protected static string $defaultDescription = 'Start the real-time upgrade dashboard server';
 
+    public function __construct()
+    {
+        parent::__construct('dashboard');
+    }
+
     protected function configure(): void
     {
         $this
@@ -26,7 +31,11 @@ final class DashboardCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $portValue = $input->getOption('port');
-        $port      = is_numeric($portValue) ? (int) $portValue : 8765;
+        if (!is_string($portValue) || !ctype_digit($portValue) || (int) $portValue < 1 || (int) $portValue > 65535) {
+            $output->writeln(sprintf('<error>Invalid port "%s". Must be an integer between 1 and 65535.</error>', (string) $portValue));
+            return Command::INVALID;
+        }
+        $port      = (int) $portValue;
         $noBrowser = (bool) $input->getOption('no-browser');
 
         $eventBus = new EventBus();

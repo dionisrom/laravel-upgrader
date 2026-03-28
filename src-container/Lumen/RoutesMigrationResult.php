@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class RoutesMigrationResult
+final class RoutesMigrationResult
 {
     /**
      * @param int $migratedCount  routes successfully converted to Route:: facade syntax

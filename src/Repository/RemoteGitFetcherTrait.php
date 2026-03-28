@@ -18,6 +18,8 @@ use Symfony\Component\Process\Process;
  */
 trait RemoteGitFetcherTrait
 {
+    private const CONCURRENT_UPGRADE_MESSAGE = 'An upgrade is already running for this repository. Use --resume to continue it, or wait for it to complete.';
+
     /**
      * @return array{string, resource}
      */
@@ -37,33 +39,86 @@ trait RemoteGitFetcherTrait
 
         if (!flock($fh, LOCK_EX | LOCK_NB)) {
             fclose($fh);
-            throw new ConcurrentUpgradeException(
-                "Another upgrade is already running for this repository."
-            );
+            throw new ConcurrentUpgradeException(self::CONCURRENT_UPGRADE_MESSAGE);
         }
 
         return [$lockFile, $fh];
     }
 
     /**
-     * Embeds token into HTTPS URL as a credential.
-     * The URL (with token) is passed as a single argv element — the kernel
-     * does NOT split it, so the token is only visible in /proc/self/environ
-     * (same process), not in `ps aux` output of other processes.
-     * The token is masked in any exception messages.
+     * Builds an HTTPS URL that carries only the provider username while the
+     * PAT itself is supplied via GIT_ASKPASS.
      */
-    private function buildAuthenticatedUrl(string $httpsUrl, ?string $token): string
+    private function buildAuthenticatedUrl(string $httpsUrl, ?string $token, string $username): string
     {
         if ($token === null || $token === '') {
             return $httpsUrl;
         }
 
-        // Insert token as `x-token-auth:TOKEN@` before the host
         return (string) preg_replace(
             '#^(https?://)#',
-            '$1x-token-auth:' . rawurlencode($token) . '@',
+            '$1' . rawurlencode($username) . '@',
             $httpsUrl
         );
+    }
+
+    private function createAskPassHelper(?string $token): ?string
+    {
+        if ($token === null || $token === '') {
+            return null;
+        }
+
+        $helperDir = sys_get_temp_dir() . '/upgrader/askpass/';
+        if (!is_dir($helperDir)) {
+            mkdir($helperDir, 0700, true);
+        }
+
+        $suffix = PHP_OS_FAMILY === 'Windows' ? '.bat' : '.sh';
+        $helperPath = $helperDir . 'askpass-' . bin2hex(random_bytes(8)) . $suffix;
+
+        $script = PHP_OS_FAMILY === 'Windows'
+            ? "@echo off\r\necho %UPGRADER_GIT_PASSWORD%\r\n"
+            : '#!/bin/sh' . "\n" . 'printf ' . "'%s\\n'" . ' "$UPGRADER_GIT_PASSWORD"' . "\n";
+
+        file_put_contents($helperPath, $script);
+
+        if (PHP_OS_FAMILY !== 'Windows') {
+            chmod($helperPath, 0700);
+        }
+
+        return $helperPath;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function buildCloneCommand(string $cloneUrl, string $targetPath): array
+    {
+        return [
+            'git',
+            'clone',
+            '--depth=1',
+            '--single-branch',
+            $cloneUrl,
+            $targetPath,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildGitEnvironment(?string $askPassHelper, ?string $token): array
+    {
+        $env = [
+            'GIT_TERMINAL_PROMPT' => '0',
+        ];
+
+        if ($askPassHelper !== null && $token !== null && $token !== '') {
+            $env['GIT_ASKPASS'] = $askPassHelper;
+            $env['UPGRADER_GIT_PASSWORD'] = $token;
+        }
+
+        return $env;
     }
 
     private function maskToken(string $message, ?string $token): string
@@ -74,22 +129,12 @@ trait RemoteGitFetcherTrait
         return str_replace($token, '***', $message);
     }
 
-    private function runClone(string $authenticatedUrl, string $targetPath, ?string $token): void
+    private function runClone(string $cloneUrl, string $targetPath, ?string $token): void
     {
-        $process = new Process([
-            'git', 'clone',
-            '--depth=1',
-            '--single-branch',
-            $authenticatedUrl,
-            $targetPath,
-        ]);
+        $askPassHelper = $this->createAskPassHelper($token);
+        $process = $this->createProcess($this->buildCloneCommand($cloneUrl, $targetPath));
         $process->setTimeout(120);
-
-        // Ensure the token does not leak via GIT_TERMINAL_PROMPT or credential helpers
-        $process->setEnv([
-            'GIT_TERMINAL_PROMPT' => '0',
-            'GIT_ASKPASS'        => 'echo',  // returns empty string — disables interactive auth
-        ]);
+        $process->setEnv($this->buildGitEnvironment($askPassHelper, $token));
 
         try {
             $process->run();
@@ -97,6 +142,10 @@ trait RemoteGitFetcherTrait
             throw new FetchTimeoutException(
                 "Git clone timed out after 120 seconds."
             );
+        } finally {
+            if ($askPassHelper !== null && is_file($askPassHelper)) {
+                @unlink($askPassHelper);
+            }
         }
 
         if (!$process->isSuccessful()) {
@@ -126,7 +175,7 @@ trait RemoteGitFetcherTrait
 
     private function resolveDefaultBranch(string $repoPath): string
     {
-        $process = new Process(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], $repoPath);
+        $process = $this->createProcess(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], $repoPath);
         $process->setTimeout(30);
         $process->run();
 
@@ -139,7 +188,7 @@ trait RemoteGitFetcherTrait
 
     private function resolveCommitSha(string $repoPath): string
     {
-        $process = new Process(['git', 'rev-parse', 'HEAD'], $repoPath);
+        $process = $this->createProcess(['git', 'rev-parse', 'HEAD'], $repoPath);
         $process->setTimeout(30);
         $process->run();
 

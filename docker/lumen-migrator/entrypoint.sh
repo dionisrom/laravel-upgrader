@@ -24,6 +24,43 @@ ts() {
     date +%s
 }
 
+read_cgroup_memory_value() {
+    local path="$1"
+
+    if [ ! -r "$path" ]; then
+        printf 'null'
+        return
+    fi
+
+    local value
+    value="$(tr -d '\n' < "$path")"
+
+    if [ "$value" = "max" ] || [ -z "$value" ]; then
+        printf 'null'
+        return
+    fi
+
+    printf '%s' "$value"
+}
+
+emit_container_resource_usage() {
+    local peak_bytes
+    peak_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.peak)"
+
+    if [ "$peak_bytes" = "null" ]; then
+        peak_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.max_usage_in_bytes)"
+    fi
+
+    local limit_bytes
+    limit_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.max)"
+
+    if [ "$limit_bytes" = "null" ]; then
+        limit_bytes="$(read_cgroup_memory_value /sys/fs/cgroup/memory.limit_in_bytes)"
+    fi
+
+    emit "{\"event\":\"container_resource_usage\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"memory_peak_bytes\":${peak_bytes},\"memory_limit_bytes\":${limit_bytes},\"source\":\"cgroup\"}"
+}
+
 run_stage() {
     local stage="$1"
     local script="$2"
@@ -89,5 +126,6 @@ run_stage "ReportBuilder" "Report/ReportBuilder.php" \
 
 # ─── Pipeline complete ────────────────────────────────────────────────────────
 
-emit "{\"event\":\"pipeline_complete\",\"hop\":\"${HOP}\",\"ts\":$(ts)}"
+emit_container_resource_usage
+emit "{\"event\":\"pipeline_complete\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"passed\":true}"
 exit 0

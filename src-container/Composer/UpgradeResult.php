@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Composer;
 
-final readonly class UpgradeResult
+final class UpgradeResult
 {
     /**
      * @param DependencyBlocker[] $blockers

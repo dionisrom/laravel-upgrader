@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Config;
 
-final readonly class MigrationResult
+final class MigrationResult
 {
     /**
      * @param string[] $appliedMigrations

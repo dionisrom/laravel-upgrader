@@ -91,6 +91,44 @@ final class FrameworkDetectorTest extends TestCase
         self::assertSame('lumen_ambiguous', $decoded['type']);
     }
 
+    public function testDetectsLumenWhenPackageIsDeclaredInRequireDev(): void
+    {
+        $workspace = $this->makeWorkspace('lumen-require-dev-both', [
+            'require' => ['laravel/framework' => '^8.0'],
+            'require-dev' => ['laravel/lumen-framework' => '^8.0'],
+        ]);
+
+        $bootstrapDir = $workspace . '/bootstrap';
+        mkdir($bootstrapDir, 0777, true);
+        file_put_contents(
+            $bootstrapDir . '/app.php',
+            "<?php\n\$app = new Laravel\\Lumen\\Application(dirname(__DIR__));\nreturn \$app;\n"
+        );
+
+        $result = $this->detector->detect($workspace);
+
+        self::assertSame('lumen', $result);
+    }
+
+    public function testDetectsLumenAmbiguousWhenOnlyRequireDevPackagePresent(): void
+    {
+        $workspace = $this->makeWorkspace('lumen-require-dev-only', [
+            'require' => ['laravel/framework' => '^8.0'],
+            'require-dev' => ['laravel/lumen-framework' => '^8.0'],
+        ]);
+
+        ob_start();
+        $result = $this->detector->detect($workspace);
+        $output = (string) ob_get_clean();
+
+        self::assertSame('lumen_ambiguous', $result);
+
+        $decoded = json_decode($output, true);
+        self::assertIsArray($decoded);
+        self::assertSame('warning', $decoded['event']);
+        self::assertSame('lumen_ambiguous', $decoded['type']);
+    }
+
     // -------------------------------------------------
     // Lumen ambiguous: only bootstrap/app.php
     // -------------------------------------------------

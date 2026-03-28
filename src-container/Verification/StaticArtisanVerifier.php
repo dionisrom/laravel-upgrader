@@ -11,9 +11,23 @@ use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
+use Symfony\Component\Process\Process;
 
 final class StaticArtisanVerifier implements VerifierInterface
 {
+    /** @var callable(list<string>, string): Process */
+    private $processFactory;
+
+    /**
+     * @param callable(list<string>, string): Process|null $processFactory
+     */
+    public function __construct(?callable $processFactory = null)
+    {
+        $this->processFactory = $processFactory ?? static function (array $cmd, string $cwd): Process {
+            return new Process($cmd, $cwd);
+        };
+    }
+
     public function verify(string $workspacePath, VerificationContext $ctx): VerifierResult
     {
         $start  = microtime(true);
@@ -24,8 +38,14 @@ final class StaticArtisanVerifier implements VerifierInterface
         $issues = array_merge($issues, $this->verifyRouteControllers($workspacePath, $parser));
         $issues = array_merge($issues, $this->verifyProviders($workspacePath, $parser));
 
+        if ($ctx->withArtisanVerify) {
+            $issues = array_merge($issues, $this->runArtisanVerification($workspacePath, $ctx));
+        }
+
+        $staticIssues = array_filter($issues, fn(VerificationIssue $i) => $i->severity === 'error');
+
         return new VerifierResult(
-            passed:          count($issues) === 0,
+            passed:          count($staticIssues) === 0,
             verifierName:    'StaticArtisanVerifier',
             issueCount:      count($issues),
             issues:          $issues,
@@ -74,9 +94,15 @@ final class StaticArtisanVerifier implements VerifierInterface
                 continue;
             }
 
-            $firstStmt = $stmts[0];
+            $hasReturnArray = false;
+            foreach ($stmts as $stmt) {
+                if ($stmt instanceof Return_ && $stmt->expr instanceof Array_) {
+                    $hasReturnArray = true;
+                    break;
+                }
+            }
 
-            if (!($firstStmt instanceof Return_) || !($firstStmt->expr instanceof Array_)) {
+            if (!$hasReturnArray) {
                 $issues[] = new VerificationIssue(
                     file:     $configFile,
                     line:     0,
@@ -108,10 +134,10 @@ final class StaticArtisanVerifier implements VerifierInterface
                 continue;
             }
 
-            $controllers = $this->extractControllerReferences($content);
+            $controllers = $this->extractControllerReferencesFromAst($content, $parser);
 
             foreach ($controllers as $controller) {
-                if (!class_exists($controller, true)) {
+                if (!class_exists($controller, false)) {
                     $issues[] = new VerificationIssue(
                         file:     $routeFile,
                         line:     0,
@@ -126,23 +152,59 @@ final class StaticArtisanVerifier implements VerifierInterface
     }
 
     /**
-     * Extract string literals from route files that look like controller FQCNs.
+     * Extract controller class references from route files using AST.
+     * Finds ::class references and string literals matching controller FQCNs.
      *
      * @return list<string>
      */
-    private function extractControllerReferences(string $content): array
+    private function extractControllerReferencesFromAst(string $content, \PhpParser\Parser $parser): array
     {
-        $controllers = [];
-
-        if (preg_match_all('/[\'"]([A-Z][A-Za-z0-9_\\\\]*Controller)[\'"]/', $content, $matches)) {
-            foreach ($matches[1] as $match) {
-                if (str_contains($match, '\\')) {
-                    $controllers[] = $match;
-                }
-            }
+        try {
+            $stmts = $parser->parse($content);
+        } catch (\PhpParser\Error) {
+            return [];
         }
 
-        return $controllers;
+        if ($stmts === null) {
+            return [];
+        }
+
+        $controllers = [];
+        $traverser   = new NodeTraverser();
+        $visitor     = new class () extends NodeVisitorAbstract {
+            /** @var list<string> */
+            public array $found = [];
+
+            public function enterNode(Node $node): null
+            {
+                // Match Foo\Bar\Controller::class
+                if ($node instanceof Node\Expr\ClassConstFetch
+                    && $node->class instanceof Node\Name
+                    && $node->name instanceof Node\Identifier
+                    && $node->name->name === 'class'
+                ) {
+                    $name = $node->class->toString();
+                    if (str_ends_with($name, 'Controller')) {
+                        $this->found[] = $name;
+                    }
+                }
+
+                // Match string literals like 'App\Http\Controllers\FooController'
+                if ($node instanceof String_
+                    && str_contains($node->value, '\\')
+                    && str_ends_with($node->value, 'Controller')
+                ) {
+                    $this->found[] = $node->value;
+                }
+
+                return null;
+            }
+        };
+
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($stmts);
+
+        return $visitor->found;
     }
 
     /**
@@ -176,7 +238,7 @@ final class StaticArtisanVerifier implements VerifierInterface
         $providers = $this->extractProvidersFromAst($stmts);
 
         foreach ($providers as $providerClass) {
-            if (!class_exists($providerClass, true)) {
+            if (!class_exists($providerClass, false)) {
                 $issues[] = new VerificationIssue(
                     file:     $appConfig,
                     line:     0,
@@ -232,6 +294,37 @@ final class StaticArtisanVerifier implements VerifierInterface
         $traverser->traverse($stmts);
 
         return $visitor->found;
+    }
+
+    /**
+     * Run artisan commands as advisory checks (warnings only, non-blocking).
+     *
+     * @return list<VerificationIssue>
+     */
+    private function runArtisanVerification(string $workspacePath, VerificationContext $ctx): array
+    {
+        $issues   = [];
+        $commands = [
+            [$ctx->phpBin, 'artisan', 'config:cache', '--quiet'],
+            [$ctx->phpBin, 'artisan', 'route:list', '--json'],
+        ];
+
+        foreach ($commands as $cmd) {
+            $process = ($this->processFactory)($cmd, $workspacePath);
+            $process->run();
+
+            if ($process->getExitCode() !== 0) {
+                $output = trim($process->getErrorOutput() ?: $process->getOutput());
+                $issues[] = new VerificationIssue(
+                    file:     '',
+                    line:     0,
+                    message:  'Artisan command failed: ' . implode(' ', $cmd) . ($output !== '' ? " — {$output}" : ''),
+                    severity: 'warning',
+                );
+            }
+        }
+
+        return $issues;
     }
 
     private function createParser(): \PhpParser\Parser

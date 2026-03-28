@@ -4,27 +4,27 @@ declare(strict_types=1);
 
 namespace AppContainer\Composer;
 
-final readonly class PackageCompatibility
+final class PackageCompatibility
 {
     /**
-     * @param bool|string $l9Support  true | false | "unknown"
+     * @param bool|string $support  true | false | "unknown"
      */
     public function __construct(
         public readonly string $package,
-        public readonly bool|string $l9Support,
+        public readonly bool|string $support,
         public readonly string|null $recommendedVersion,
         public readonly string $notes,
     ) {}
 
-    /** l9_support === false */
+    /** support === false */
     public function isBlocker(): bool
     {
-        return $this->l9Support === false;
+        return $this->support === false;
     }
 
-    /** l9_support === "unknown" */
+    /** support === "unknown" */
     public function isUnknown(): bool
     {
-        return $this->l9Support === 'unknown';
+        return $this->support === 'unknown';
     }
 }

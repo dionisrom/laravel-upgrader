@@ -44,7 +44,6 @@ final class ClassResolutionVerifierTest extends TestCase
         // PHPUnit\Framework\TestCase is guaranteed to exist
         $code = '<?php' . PHP_EOL . 'use PHPUnit\Framework\TestCase;';
 
-        // ClassResolutionVerifier only scans `use App\...` statements, so this should pass
         file_put_contents($this->tmpDir . '/app/SomeFile.php', $code);
 
         $ctx    = new VerificationContext(workspacePath: $this->tmpDir);
@@ -67,17 +66,48 @@ final class ClassResolutionVerifierTest extends TestCase
         self::assertSame('error', $result->issues[0]->severity);
     }
 
-    public function testIgnoresNonAppNamespacedUseStatements(): void
+    public function testDetectsUnresolvableVendorClass(): void
     {
-        // Vendor namespaces should not trigger issues
-        $code = '<?php' . PHP_EOL . 'use Symfony\Component\Process\Process;';
+        $code = '<?php' . PHP_EOL . 'use Vendor\NonExistent\FakeClass999Xz;';
         file_put_contents($this->tmpDir . '/app/VendorUse.php', $code);
+
+        $ctx    = new VerificationContext(workspacePath: $this->tmpDir);
+        $result = (new ClassResolutionVerifier())->verify($this->tmpDir, $ctx);
+
+        self::assertFalse($result->passed);
+        self::assertSame(1, $result->issueCount);
+        self::assertStringContainsString('Vendor\\NonExistent\\FakeClass999Xz', $result->issues[0]->message);
+    }
+
+    public function testIgnoresFunctionAndConstImports(): void
+    {
+        $code = implode(PHP_EOL, [
+            '<?php',
+            'use function strlen;',
+            'use const PHP_EOL;',
+        ]);
+        file_put_contents($this->tmpDir . '/app/FuncConst.php', $code);
 
         $ctx    = new VerificationContext(workspacePath: $this->tmpDir);
         $result = (new ClassResolutionVerifier())->verify($this->tmpDir, $ctx);
 
         self::assertTrue($result->passed);
         self::assertSame(0, $result->issueCount);
+    }
+
+    public function testHandlesGroupedUseStatements(): void
+    {
+        $code = implode(PHP_EOL, [
+            '<?php',
+            'use App\Services\{NonExistentAlpha999Zz, NonExistentBeta999Zz};',
+        ]);
+        file_put_contents($this->tmpDir . '/app/Grouped.php', $code);
+
+        $ctx    = new VerificationContext(workspacePath: $this->tmpDir);
+        $result = (new ClassResolutionVerifier())->verify($this->tmpDir, $ctx);
+
+        self::assertFalse($result->passed);
+        self::assertSame(2, $result->issueCount);
     }
 
     public function testReportsMultipleIssuesForMultipleUnresolvableClasses(): void

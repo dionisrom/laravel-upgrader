@@ -35,12 +35,26 @@ final class ConfigMerger
             }
 
             if (is_array($value) && is_array($existing[$key])) {
-                // Both arrays → recurse; custom keys inside nested arrays are always preserved
+                // Both arrays → recurse; propagate nested known-changed keys
                 /** @var array<string, mixed> $existingNested */
                 $existingNested = $existing[$key];
                 /** @var array<string, mixed> $changesNested */
                 $changesNested = $value;
-                $result[$key] = $this->merge($existingNested, $changesNested, []);
+
+                // Collect sub-keys: "passwords.users" → "users" when current key is "passwords"
+                $nestedKnown = [];
+                $prefix = $key . '.';
+                foreach ($knownChangedKeys as $kck) {
+                    if (str_starts_with($kck, $prefix)) {
+                        $nestedKnown[] = substr($kck, strlen($prefix));
+                    }
+                }
+                // Also allow the key itself to act as a wildcard for direct children
+                if (in_array($key, $knownChangedKeys, true)) {
+                    $nestedKnown = array_keys($changesNested);
+                }
+
+                $result[$key] = $this->merge($existingNested, $changesNested, $nestedKnown);
                 continue;
             }
 

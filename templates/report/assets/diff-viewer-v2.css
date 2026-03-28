@@ -1,0 +1,562 @@
+/* ============================================================
+   diff-viewer-v2.css  —  Laravel Upgrader HTML Diff Viewer v2
+   Self-contained: inlined into the report HTML by the generator.
+   ============================================================ */
+
+/* ---- Reset & base ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 14px; height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  background: #f6f8fa;
+  color: #24292f;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Header ---- */
+#report-header {
+  background: #1b1f23;
+  color: #fff;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+#report-header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+#report-header .meta {
+  font-size: 0.8rem;
+  color: #8b949e;
+  margin-top: 2px;
+}
+
+/* ---- Hop tabs ---- */
+#hop-tabs {
+  background: #2d333b;
+  border-bottom: 1px solid #444c56;
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.hop-tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #8b949e;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+  line-height: 1.4;
+}
+
+.hop-tab:hover {
+  color: #cdd9e5;
+  background: rgba(255,255,255,0.05);
+}
+
+.hop-tab.active {
+  color: #fff;
+  border-bottom-color: #2f81f7;
+}
+
+.hop-tab .hop-meta {
+  font-size: 0.72rem;
+  color: #6e7681;
+  display: block;
+}
+
+.hop-tab.active .hop-meta {
+  color: #8b949e;
+}
+
+/* ---- Layout: sidebar + content ---- */
+#layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: calc(100vh - 100px); /* header + tabs approx */
+}
+
+/* ---- Sidebar ---- */
+#sidebar {
+  width: 280px;
+  min-width: 200px;
+  max-width: 400px;
+  background: #fff;
+  border-right: 1px solid #d0d7de;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  resize: horizontal;
+}
+
+#sidebar-header {
+  padding: 10px 12px;
+  background: #f6f8fa;
+  border-bottom: 1px solid #d0d7de;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #57606a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#sidebar-filter {
+  padding: 8px 10px;
+  border-bottom: 1px solid #d0d7de;
+  flex-shrink: 0;
+}
+
+#sidebar-filter input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f6f8fa;
+  color: #24292f;
+}
+
+#sidebar-filter input:focus {
+  outline: none;
+  border-color: #0969da;
+  background: #fff;
+}
+
+#file-tree {
+  overflow-y: auto;
+  flex: 1;
+  padding: 4px 0;
+}
+
+/* ---- File tree ---- */
+.dir-node { margin: 0; }
+
+.dir-entry {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #24292f;
+  list-style: none;
+  user-select: none;
+}
+
+.dir-entry:hover { background: #f6f8fa; }
+
+.dir-icon { font-size: 0.9em; }
+.dir-name { flex: 1; }
+
+.dir-children { padding-left: 16px; }
+
+.file-entry {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  margin: 1px 4px;
+  color: #24292f;
+  transition: background 0.1s;
+}
+
+.file-entry:hover, .file-entry:focus {
+  background: #ddf4ff;
+  outline: none;
+}
+
+.file-entry.active {
+  background: #0969da1a;
+}
+
+.file-icon { font-size: 0.85em; }
+.file-name { flex: 1; font-family: "SFMono-Regular", Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- Change type badges ---- */
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 12px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge-auto   { background: #dafbe1; color: #1a7f37; border: 1px solid #acd5b5; }
+.badge-review { background: #fff8c5; color: #9a6700; border: 1px solid #d4b84b; }
+.badge-manual { background: #ffebe9; color: #cf222e; border: 1px solid #f7a1a3; }
+
+/* ---- Main content ---- */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Filter bar ---- */
+#filter-bar {
+  background: #fff;
+  border-bottom: 1px solid #d0d7de;
+  padding: 10px 16px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+#filter-bar label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #57606a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 2px;
+}
+
+.filter-btn {
+  padding: 4px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 16px;
+  background: #f6f8fa;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.filter-btn:hover { border-color: #8c959f; background: #f0f3f6; }
+
+.filter-btn.active {
+  background: #0969da;
+  color: #fff;
+  border-color: #0969da;
+}
+
+.filter-btn.filter-auto.active   { background: #1a7f37; border-color: #1a7f37; }
+.filter-btn.filter-review.active { background: #9a6700; border-color: #9a6700; }
+.filter-btn.filter-manual.active { background: #cf222e; border-color: #cf222e; }
+
+#filter-ext-input, #filter-dir-input {
+  padding: 4px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f6f8fa;
+  width: 120px;
+}
+
+#filter-ext-input:focus, #filter-dir-input:focus {
+  outline: none;
+  border-color: #0969da;
+  background: #fff;
+}
+
+#filter-count {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: #57606a;
+}
+
+.filter-separator {
+  color: #d0d7de;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+#filter-hop-input {
+  padding: 4px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f6f8fa;
+  color: #24292f;
+}
+
+#filter-hop-input:focus {
+  outline: none;
+  border-color: #0969da;
+  background: #fff;
+}
+
+/* ---- Hop sections ---- */
+.hop-section { display: none; flex: 1; padding: 16px 20px; }
+.hop-section.visible { display: block; }
+
+.hop-summary {
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.hop-summary-stat {
+  text-align: center;
+}
+
+.hop-summary-stat .stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #0969da;
+  display: block;
+}
+
+.hop-summary-stat .stat-label {
+  font-size: 0.72rem;
+  color: #57606a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---- File diff blocks ---- */
+.file-diff-block {
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  scroll-margin-top: 80px;
+}
+
+.file-diff-block.hidden { display: none; }
+
+.file-diff-header {
+  padding: 10px 14px;
+  background: #f6f8fa;
+  border-bottom: 1px solid #d0d7de;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filename {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Rule annotations ---- */
+.rule-annotations {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.rule-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  cursor: default;
+  white-space: nowrap;
+}
+
+/* ---- Sign-off ---- */
+.signoff-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #57606a;
+  cursor: pointer;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.signoff-checkbox { cursor: pointer; }
+
+.file-diff-block.signed-off {
+  border-color: #2da44e;
+}
+
+.file-diff-block.signed-off .file-diff-header {
+  background: #dafbe1;
+}
+
+/* ---- Diff container ---- */
+.diff-container {
+  overflow-x: auto;
+}
+
+/* ---- Review notes ---- */
+.review-note-container {
+  border-top: 1px solid #d0d7de;
+  padding: 4px 14px;
+  background: #f6f8fa;
+}
+
+.review-note-toggle {
+  background: none;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: #57606a;
+}
+
+.review-note-toggle:hover { background: #eef2ff; }
+
+.review-note-editor.hidden { display: none; }
+
+.review-note-text {
+  width: 100%;
+  min-height: 60px;
+  margin-top: 6px;
+  padding: 6px 8px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  resize: vertical;
+  background: #fff;
+  color: #24292f;
+}
+
+.review-note-text:focus {
+  outline: none;
+  border-color: #0969da;
+}
+
+/* ---- Header action buttons ---- */
+.header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.header-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.header-btn:hover { background: rgba(255,255,255,0.2); }
+
+/* The pre holds raw diff text as a data attribute; it's hidden from view */
+.unified-diff { display: none; }
+
+.d2h-wrapper { overflow-x: auto; }
+.no-diff { padding: 20px; color: #57606a; font-style: italic; text-align: center; }
+
+.hop-empty {
+  padding: 32px;
+  text-align: center;
+  color: #57606a;
+}
+
+/* ---- Summary badges in header ---- */
+.header-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.header-stat {
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.header-stat strong {
+  color: #fff;
+}
+
+/* ---- Scrollbars (webkit) ---- */
+#file-tree::-webkit-scrollbar,
+#content::-webkit-scrollbar { width: 6px; height: 6px; }
+#file-tree::-webkit-scrollbar-thumb,
+#content::-webkit-scrollbar-thumb { background: #d0d7de; border-radius: 3px; }
+
+/* ---- Print / PDF ---- */
+@media print {
+  #report-header { position: static; }
+  #hop-tabs { display: none; }
+  #layout { display: block; height: auto; overflow: visible; }
+  #sidebar { display: none; }
+  #content { overflow: visible; }
+  #filter-bar { display: none; }
+  .hop-section { display: block !important; page-break-before: always; }
+  .hop-section:first-child { page-break-before: avoid; }
+  .file-diff-block { page-break-inside: avoid; }
+  .d2h-file-side-diff { overflow: visible; }
+}
+
+/* ---- Accessibility ---- */
+:focus-visible {
+  outline: 2px solid #0969da;
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -25,7 +25,7 @@
 
 **Version pinned:** `1.2.6`  
 **Constraint:** `^1.2` (patch/minor auto-updates allowed within major)  
-**Why this version:** Earliest `1.2.x` release that includes `LaravelSetList::LARAVEL_90` with full rule coverage for all 48 breaking changes in `docs/breaking-changes.json`.
+**Why this version:** Earliest `1.2.x` release that includes `LaravelSetList::LARAVEL_90` with rule coverage for the 29 breaking changes in `docs/breaking-changes.json`.
 
 ### Upstream Coverage vs Custom Rules
 

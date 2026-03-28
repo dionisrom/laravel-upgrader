@@ -12,10 +12,11 @@ final class RectorConfigBuilder
      * @param string   $workspacePath Absolute path to the repository being upgraded
      * @param string[] $ruleClasses   Fully-qualified class names of Rector rules to apply
      * @param string   $outputPath    Absolute path where the generated config will be written
+     * @param string[] $sets          Fully-qualified set list constants (e.g. LaravelSetList::LARAVEL_90)
      *
      * @return string The path the file was written to ($outputPath)
      */
-    public function build(string $workspacePath, array $ruleClasses, string $outputPath): string
+    public function build(string $workspacePath, array $ruleClasses, string $outputPath, array $sets = []): string
     {
         $skipPaths = [
             $workspacePath . '/.upgrader-state',
@@ -37,11 +38,27 @@ final class RectorConfigBuilder
         );
         $lines[] = '';
 
-        foreach ($skipPaths as $skipPath) {
-            $lines[] = sprintf(
-                '    $rectorConfig->skip([%s]);',
-                $this->exportString($skipPath),
+        $skipEntries = array_map(
+            fn (string $path): string => '        ' . $this->exportString($path) . ',',
+            $skipPaths,
+        );
+        $lines[] = '    $rectorConfig->skip([';
+        foreach ($skipEntries as $entry) {
+            $lines[] = $entry;
+        }
+        $lines[] = '    ]);';
+
+        if ($sets !== []) {
+            $lines[] = '';
+            $setEntries = array_map(
+                fn (string $set): string => '        ' . $this->exportConstantRef($set) . ',',
+                $sets,
             );
+            $lines[] = '    $rectorConfig->sets([';
+            foreach ($setEntries as $entry) {
+                $lines[] = $entry;
+            }
+            $lines[] = '    ]);';
         }
 
         if ($ruleClasses !== []) {
@@ -88,5 +105,14 @@ final class RectorConfigBuilder
     {
         // Emit as backslash-prefixed FQCN literal so no use statement is needed
         return '\\' . ltrim($fqcn, '\\');
+    }
+
+    /**
+     * Exports a class constant reference like 'RectorLaravel\Set\LaravelSetList::LARAVEL_90'
+     * as '\RectorLaravel\Set\LaravelSetList::LARAVEL_90' (PHP code, not a string literal).
+     */
+    private function exportConstantRef(string $ref): string
+    {
+        return '\\' . ltrim($ref, '\\');
     }
 }

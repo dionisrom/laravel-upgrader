@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace AppContainer\Verification;
 
+use PhpParser\Node;
+use PhpParser\Node\Stmt\Use_;
+use PhpParser\Node\Stmt\GroupUse;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
+use PhpParser\ParserFactory;
+
 final class ClassResolutionVerifier implements VerifierInterface
 {
     public function verify(string $workspacePath, VerificationContext $ctx): VerifierResult
@@ -22,6 +29,7 @@ final class ClassResolutionVerifier implements VerifierInterface
         }
 
         $files  = $this->findPhpFiles($appDir);
+        $parser = $this->createParser();
         $issues = [];
 
         foreach ($files as $file) {
@@ -31,13 +39,14 @@ final class ClassResolutionVerifier implements VerifierInterface
                 continue;
             }
 
-            $classes = $this->extractUseStatements($content);
+            $classes = $this->extractUseStatements($content, $parser);
 
             foreach ($classes as $fqcn) {
                 if (
                     !class_exists($fqcn, true)
                     && !interface_exists($fqcn, true)
                     && !trait_exists($fqcn, true)
+                    && !enum_exists($fqcn, true)
                 ) {
                     $issues[] = new VerificationIssue(
                         file:     $file,
@@ -59,21 +68,56 @@ final class ClassResolutionVerifier implements VerifierInterface
     }
 
     /**
-     * Extract fully-qualified class names from `use` statements starting with App\.
+     * Extract fully-qualified class names from all `use` statements using AST.
+     * Skips function and const imports.
      *
      * @return list<string>
      */
-    private function extractUseStatements(string $content): array
+    private function extractUseStatements(string $content, \PhpParser\Parser $parser): array
     {
-        $classes = [];
-
-        if (preg_match_all('/^use\s+(App\\\\[A-Za-z0-9_\\\\]+);/m', $content, $matches)) {
-            foreach ($matches[1] as $fqcn) {
-                $classes[] = $fqcn;
-            }
+        try {
+            $stmts = $parser->parse($content);
+        } catch (\PhpParser\Error) {
+            return [];
         }
 
-        return $classes;
+        if ($stmts === null) {
+            return [];
+        }
+
+        $classes   = [];
+        $traverser = new NodeTraverser();
+        $visitor   = new class () extends NodeVisitorAbstract {
+            /** @var list<string> */
+            public array $found = [];
+
+            public function enterNode(Node $node): null
+            {
+                // Regular use: use Foo\Bar;
+                if ($node instanceof Use_ && $node->type === Use_::TYPE_NORMAL) {
+                    foreach ($node->uses as $use) {
+                        $this->found[] = $use->name->toString();
+                    }
+                }
+
+                // Grouped use: use Foo\{Bar, Baz};
+                if ($node instanceof GroupUse) {
+                    $prefix = $node->prefix->toString();
+                    foreach ($node->uses as $use) {
+                        if ($use->type === Use_::TYPE_NORMAL) {
+                            $this->found[] = $prefix . '\\' . $use->name->toString();
+                        }
+                    }
+                }
+
+                return null;
+            }
+        };
+
+        $traverser->addVisitor($visitor);
+        $traverser->traverse($stmts);
+
+        return $visitor->found;
     }
 
     /**
@@ -93,5 +137,17 @@ final class ClassResolutionVerifier implements VerifierInterface
         }
 
         return $files;
+    }
+
+    private function createParser(): \PhpParser\Parser
+    {
+        $factory = new ParserFactory();
+
+        if (method_exists($factory, 'createForHostVersion')) {
+            return $factory->createForHostVersion();
+        }
+
+        // @phpstan-ignore-next-line
+        return $factory->create(4);
     }
 }

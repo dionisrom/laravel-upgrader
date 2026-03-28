@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Verification;
 
+use AppContainer\EventEmitter;
 use Symfony\Component\Process\Process;
 
 final class PhpStanVerifier implements VerifierInterface
@@ -14,8 +15,10 @@ final class PhpStanVerifier implements VerifierInterface
     /**
      * @param callable(list<string>, string): Process|null $processFactory
      */
-    public function __construct(?callable $processFactory = null)
-    {
+    public function __construct(
+        ?callable $processFactory = null,
+        private readonly ?EventEmitter $emitter = null,
+    ) {
         $this->processFactory = $processFactory ?? static function (array $cmd, string $cwd): Process {
             return new Process($cmd, $cwd);
         };
@@ -60,6 +63,11 @@ final class PhpStanVerifier implements VerifierInterface
         $preCount = (int) ($baseline['error_count'] ?? 0);
 
         if ($errorCount > $preCount) {
+            $this->emitter?->emit('phpstan_regression', [
+                'pre_error_count'  => $preCount,
+                'post_error_count' => $errorCount,
+            ]);
+
             $issue = new VerificationIssue(
                 file:     '',
                 line:     0,

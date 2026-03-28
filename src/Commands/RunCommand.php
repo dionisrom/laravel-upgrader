@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
+use App\Composer\LaravelVersionDetector;
 use App\Dashboard\EventBus;
 use App\Dashboard\ReactDashboardServer;
 use App\Orchestrator\AuditLogWriter;
@@ -11,7 +12,9 @@ use App\Orchestrator\DockerRunner;
 use App\Orchestrator\EventStreamer;
 use App\Orchestrator\HopPlanner;
 use App\Orchestrator\OrchestratorException;
+use App\Orchestrator\State\TransformCheckpoint;
 use App\Orchestrator\TerminalRenderer;
+use App\Orchestrator\UpgradeOptions;
 use App\Orchestrator\UpgradeOrchestrator;
 use App\Repository\RepositoryFetcherFactory;
 use App\Workspace\WorkspaceManager;
@@ -94,7 +97,7 @@ final class RunCommand extends Command
             $safeOutput->writeln('<comment>You have requested to skip PHPStan verification.</comment>');
             $safeOutput->write('Type "I understand PHPStan will not run" to confirm: ');
 
-            $confirmation = trim((string) fgets(STDIN));
+            $confirmation = trim((string) $this->readLine($input));
             if ($confirmation !== 'I understand PHPStan will not run') {
                 $safeOutput->writeln('<error>Confirmation not matched. Aborting.</error>');
                 return Command::INVALID;
@@ -103,10 +106,14 @@ final class RunCommand extends Command
 
         /** @var string $repo */
         $repo     = (string) $input->getOption('repo');
-        $from     = $input->getOption('from') !== null ? (string) $input->getOption('from') : '8';
+        $from     = $input->getOption('from') !== null ? (string) $input->getOption('from') : null;
         $to       = (string) $input->getOption('to');
         $outputDir = (string) $input->getOption('output');
         $noDashboard = (bool) $input->getOption('no-dashboard');
+        $dryRun   = (bool) $input->getOption('dry-run');
+        $resume   = (bool) $input->getOption('resume');
+        $withArtisanVerify = (bool) $input->getOption('with-artisan-verify');
+        $formats  = array_map('trim', explode(',', (string) $input->getOption('format')));
         $port     = self::DASHBOARD_PORT;
 
         // 4. Show pre-flight summary (unless --no-interaction)
@@ -120,14 +127,14 @@ final class RunCommand extends Command
                 self::VERSION,
                 str_repeat('═', 38),
                 $this->redactor->redact($repo),
-                $from,
+                $from ?? 'auto-detect',
                 $to,
                 $dashboardLine,
                 rtrim($outputDir, '/'),
             ));
 
             // 5. Wait for ENTER
-            fgets(STDIN);
+            $this->readLine($input);
         }
 
         // 6. Create output directory if missing
@@ -142,7 +149,7 @@ final class RunCommand extends Command
 
         $logPath = rtrim($outputDir, '/') . '/audit.jsonnd';
         $repoSha = substr(hash('sha256', $repo . time()), 0, 12);
-        $streamer->addConsumer(new AuditLogWriter($logPath, uniqid('run-', true), $repoSha));
+        $streamer->addConsumer(new AuditLogWriter($logPath, uniqid('run-', true), $repoSha, $this->getApplication()?->getVersion() ?? 'unknown'));
 
         // 8. Start dashboard if not disabled
         $dashboardServer = null;
@@ -170,17 +177,38 @@ final class RunCommand extends Command
             return Command::FAILURE;
         }
 
+        // 9b. Auto-detect --from version if not provided
+        if ($from === null) {
+            $detector = new LaravelVersionDetector();
+            $detected = $detector->detect($fetchResult->workspacePath);
+            if ($detected === null) {
+                $safeOutput->writeln('<error>Could not auto-detect Laravel version from composer.lock. Please specify --from explicitly.</error>');
+                return Command::INVALID;
+            }
+            $from = $detected;
+            $safeOutput->writeln(sprintf('<info>Auto-detected source version: Laravel %s</info>', $from));
+        }
+
         // 10. Run orchestrator
         $workspaceManager = new WorkspaceManager();
+        $checkpoints = $resume ? new TransformCheckpoint($fetchResult->workspacePath) : null;
         $orchestrator = new UpgradeOrchestrator(
             new HopPlanner(),
             new DockerRunner(),
             $workspaceManager,
             $streamer,
+            $checkpoints,
+        );
+
+        $upgradeOptions = new UpgradeOptions(
+            skipPhpstan: $skipPhpstan,
+            withArtisanVerify: $withArtisanVerify,
+            reportFormats: $formats,
+            dryRun: $dryRun,
         );
 
         try {
-            $orchestrator->run($fetchResult->workspacePath, $from, $to);
+            $orchestrator->run($fetchResult->workspacePath, $from, $to, $upgradeOptions);
         } catch (OrchestratorException $e) {
             $safeOutput->writeln(sprintf('<error>Upgrade failed: %s</error>', $this->redactor->redact($e->getMessage())));
             return Command::FAILURE;
@@ -189,5 +217,14 @@ final class RunCommand extends Command
         $safeOutput->writeln(sprintf('<info>Upgrade complete. Output written to %s/</info>', rtrim($outputDir, '/')));
 
         return Command::SUCCESS;
+    }
+
+    private function readLine(InputInterface $input): string
+    {
+        if ($input instanceof \Symfony\Component\Console\Input\StreamableInputInterface && $input->getStream() !== null) {
+            return (string) fgets($input->getStream());
+        }
+
+        return (string) fgets(STDIN);
     }
 }

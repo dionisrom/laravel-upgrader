@@ -76,7 +76,7 @@ final class LocalRepositoryFetcherTest extends TestCase
         try {
             $fetcher = new LocalRepositoryFetcher();
             $this->expectException(ConcurrentUpgradeException::class);
-            $this->expectExceptionMessage('Another upgrade is already running');
+            $this->expectExceptionMessage('An upgrade is already running for this repository. Use --resume to continue it, or wait for it to complete.');
             $fetcher->fetch($source, $this->tempDir . '/target2');
         } finally {
             flock($fh, LOCK_UN);

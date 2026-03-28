@@ -29,7 +29,7 @@ final class EventEmitter
         $payload = array_merge($data, [
             'event' => $eventType,
             'hop'   => $this->hop,
-            'ts'    => (int) (microtime(true) * 1000),
+            'ts'    => microtime(true),
             'seq'   => $this->seq,
         ]);
 

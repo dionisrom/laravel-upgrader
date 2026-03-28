@@ -20,9 +20,6 @@ final class ConfigSnapshotManager
 {
     private const SNAPSHOT_BASE = 'upgrader/snapshots';
 
-    /** @var string[] env files to always include when present */
-    private const ENV_FILES = ['.env', '.env.example', '.env.testing', '.env.staging'];
-
     /**
      * Snapshot all config/*.php and .env* files into a tar archive.
      *
@@ -122,10 +119,9 @@ final class ConfigSnapshotManager
             }
         }
 
-        foreach (self::ENV_FILES as $envFile) {
-            $abs = $root . '/' . $envFile;
-            if (file_exists($abs)) {
-                $files[$abs] = $envFile;
+        foreach (glob($root . '/.env*') ?: [] as $abs) {
+            if (is_file($abs)) {
+                $files[$abs] = basename($abs);
             }
         }
 

@@ -1,0 +1,264 @@
+{
+  "hop": "9_to_10",
+  "laravel_from": "9.x",
+  "laravel_to": "10.x",
+  "php_minimum": "8.1",
+  "last_curated": "2026-03-22",
+  "breaking_changes": [
+    {
+      "id": "l10_php_81_minimum",
+      "severity": "high",
+      "category": "environment",
+      "title": "PHP 8.1 minimum requirement",
+      "description": "Laravel 10 requires PHP 8.1 or higher. Projects running PHP 8.0 must upgrade PHP before applying this hop.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": null,
+      "migration_example": {
+        "before": "\"require\": { \"php\": \"^8.0\" }",
+        "after": "\"require\": { \"php\": \"^8.1\" }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#updating-dependencies"
+    },
+    {
+      "id": "l10_native_return_types_added",
+      "severity": "high",
+      "category": "framework",
+      "title": "Native return types added to all framework classes",
+      "description": "Laravel 10 adds native PHP return types to ALL framework classes. Any application class that extends a framework class and overrides a method WITHOUT a return type declaration will cause a PHP deprecation notice or fatal error. This is the highest-volume change in the L9→L10 upgrade.",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L9ToL10\\LaravelModelReturnTypeRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "extends Model|extends FormRequest|extends Controller|extends Middleware",
+      "migration_example": {
+        "before": "public function toArray() { return []; }",
+        "after": "public function toArray(): array { return []; }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#modifying-columns"
+    },
+    {
+      "id": "l10_assert_deleted_removed",
+      "severity": "medium",
+      "category": "testing",
+      "title": "assertDeleted() removed — use assertModelMissing()",
+      "description": "The assertDeleted() method was deprecated in Laravel 9 and removed in Laravel 10. Use assertModelMissing() for model-based assertions, or assertDatabaseMissing() for table-based assertions.",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L9ToL10\\AssertDeletedToAssertModelMissingRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "assertDeleted",
+      "migration_example": {
+        "before": "$this->assertDeleted($user);",
+        "after": "$this->assertModelMissing($user);"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#the-assert-deleted-method"
+    },
+    {
+      "id": "l10_dispatch_now_removed",
+      "severity": "high",
+      "category": "queue",
+      "title": "Bus::dispatchNow() and $this->dispatchNow() removed",
+      "description": "The dispatchNow() method was deprecated in Laravel 8 and removed in Laravel 10. Use Bus::dispatchSync() or $this->dispatchSync() instead.",
+      "rector_rule": "RectorLaravel\\Rector\\StaticCall\\DispatchNonShouldQueueToDispatchSyncRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "dispatchNow",
+      "migration_example": {
+        "before": "Bus::dispatchNow(new ProcessOrder($order));",
+        "after": "Bus::dispatchSync(new ProcessOrder($order));"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#the-dispatch-now-method"
+    },
+    {
+      "id": "l10_model_dates_property_removed",
+      "severity": "high",
+      "category": "eloquent",
+      "title": "Model $dates property fully removed",
+      "description": "The deprecated $dates property on Eloquent models is fully removed in Laravel 10. Use the $casts property with 'datetime' cast. This was deprecated in Laravel 9 but still functional; now it is gone.",
+      "rector_rule": "RectorLaravel\\Rector\\Class_\\UnifyModelDatesWithCastsRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "protected \\$dates",
+      "migration_example": {
+        "before": "protected $dates = ['deleted_at', 'published_at'];",
+        "after": "protected $casts = ['deleted_at' => 'datetime', 'published_at' => 'datetime'];"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#model-dates-property"
+    },
+    {
+      "id": "l10_route_controller_namespace_removed",
+      "severity": "high",
+      "category": "routing",
+      "title": "RouteServiceProvider $namespace property removed",
+      "description": "The $namespace property in RouteServiceProvider has been fully removed. Routes must use fully qualified class names or the use statement import. Applications still relying on App\\Http\\Controllers auto-prefix must update all route files.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "protected \\$namespace",
+      "migration_example": {
+        "before": "Route::get('/users', 'UserController@index');",
+        "after": "Route::get('/users', [\\App\\Http\\Controllers\\UserController::class, 'index']);"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#the-route-service-provider"
+    },
+    {
+      "id": "l10_deprecated_helpers_removed",
+      "severity": "medium",
+      "category": "helpers",
+      "title": "Deprecated helper functions removed (str, array helpers)",
+      "description": "Various deprecated helper functions removed in Laravel 10 including some string and array helpers that were moved to Str and Arr facades in Laravel 9.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "str_plural|str_singular|str_slug|str_contains|str_is|str_limit|str_finish|str_starts_with|str_ends_with|array_add|array_except",
+      "migration_example": {
+        "before": "$slug = str_slug('Hello World');",
+        "after": "$slug = \\Illuminate\\Support\\Str::slug('Hello World');"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#deprecated-helpers"
+    },
+    {
+      "id": "l10_doctrine_dbal_requirement_changed",
+      "severity": "medium",
+      "category": "database",
+      "title": "Doctrine DBAL no longer required for column modifications",
+      "description": "Laravel 10 no longer requires doctrine/dbal for column modifications in migrations. The framework now uses its own schema grammar for column changes. Projects can remove the doctrine/dbal dependency unless they use DBAL-specific features directly.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "doctrine/dbal",
+      "migration_example": {
+        "before": "\"require\": { \"doctrine/dbal\": \"^3.0\" }",
+        "after": "// doctrine/dbal can be removed from composer.json if not used directly"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#modifying-columns"
+    },
+    {
+      "id": "l10_service_provider_boot_method_typed",
+      "severity": "medium",
+      "category": "framework",
+      "title": "ServiceProvider::boot() return type added",
+      "description": "The boot() method on ServiceProvider now has a void return type. Custom service providers must update their boot() method signatures to include : void.",
+      "rector_rule": "AppContainer\\Rector\\Rules\\L9ToL10\\LaravelModelReturnTypeRector",
+      "automated": true,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "extends ServiceProvider",
+      "migration_example": {
+        "before": "public function boot() { // ... }",
+        "after": "public function boot(): void { // ... }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#service-providers"
+    },
+    {
+      "id": "l10_middleware_return_types",
+      "severity": "medium",
+      "category": "middleware",
+      "title": "Middleware handle() method return type added",
+      "description": "Middleware handle() methods in Laravel 10 now have a return type of Response. Custom middleware must add the return type to avoid deprecation notices.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "function handle\\(.*\\$request.*\\$next",
+      "migration_example": {
+        "before": "public function handle($request, Closure $next) { return $next($request); }",
+        "after": "public function handle(Request $request, Closure $next): Response { return $next($request); }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#middleware"
+    },
+    {
+      "id": "l10_minimum_stability_stable",
+      "severity": "low",
+      "category": "composer",
+      "title": "Minimum dependency version bumps",
+      "description": "Laravel 10 bumps minimum versions of several first-party packages. composer update will handle most of these, but locked constraints may reject the upgrade.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": null,
+      "migration_example": {
+        "before": "\"laravel/framework\": \"^9.0\"",
+        "after": "\"laravel/framework\": \"^10.0\""
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#updating-dependencies"
+    },
+    {
+      "id": "l10_exception_handler_return_types",
+      "severity": "medium",
+      "category": "framework",
+      "title": "Exception handler method return types added",
+      "description": "The render(), report(), shouldReport(), and register() methods on the exception handler now have return types. Custom exception handlers must update their signatures.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": true,
+      "detection_pattern": "extends Handler|extends ExceptionHandler",
+      "migration_example": {
+        "before": "public function render($request, Throwable $exception) { ... }",
+        "after": "public function render($request, Throwable $exception): Response { ... }"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#exception-handler"
+    },
+    {
+      "id": "l10_password_rule_defaults",
+      "severity": "low",
+      "category": "validation",
+      "title": "Password validation rule defaults changed",
+      "description": "The Password::defaults() method in Laravel 10 now requires at least 8 characters by default and includes additional rules. Applications relying on the previous defaults may need to explicitly configure password rules.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "Password::defaults",
+      "migration_example": {
+        "before": "// Default was Password::min(8)",
+        "after": "// Review Password::defaults() in AuthServiceProvider"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#validation"
+    },
+    {
+      "id": "l10_closure_fake_queue_interactions",
+      "severity": "low",
+      "category": "testing",
+      "title": "Closure-based fakes for Queue/Bus/Mail interactions updated",
+      "description": "Testing assertions for queued closures have changed behaviour. assertPushed and assertDispatched now handle closure jobs differently.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "assertPushed|assertDispatched",
+      "migration_example": {
+        "before": "Queue::assertPushed(function (ClosureJob $job) { ... });",
+        "after": "// Review closure-based queue assertions — may need updating"
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#queue"
+    },
+    {
+      "id": "l10_redis_cache_tag_flushing",
+      "severity": "low",
+      "category": "cache",
+      "title": "Redis cache tag flushing behaviour changed",
+      "description": "Cache::tags()->flush() on Redis now uses SCAN-based deletion instead of a single DEL. This is more memory-efficient but changes the atomicity behaviour.",
+      "rector_rule": null,
+      "automated": false,
+      "affects_lumen": false,
+      "manual_review_required": false,
+      "detection_pattern": "Cache::tags",
+      "migration_example": {
+        "before": "Cache::tags(['users'])->flush();",
+        "after": "// Behaviour unchanged in API, but underlying implementation changed. Review if atomicity matters."
+      },
+      "official_doc_anchor": "https://laravel.com/docs/10.x/upgrade#cache"
+    }
+  ]
+}

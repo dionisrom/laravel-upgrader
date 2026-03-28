@@ -1,0 +1,21 @@
+{
+    "name": "upgrader/l13-warmup",
+    "description": "Composer cache warmup for Laravel 13 target packages. Used at Docker build time only — populates the Composer HTTP cache so DependencyUpgrader can run composer install offline (--network=none) at container runtime.",
+    "type": "project",
+    "require": {
+        "php": "^8.3",
+        "laravel/framework": "^13.0",
+        "guzzlehttp/guzzle": "^7.0",
+        "laravel/horizon": "^5.0",
+        "laravel/passport": "^13.0",
+        "laravel/sanctum": "^4.0",
+        "livewire/livewire": "^3.0",
+        "spatie/laravel-activitylog": "^4.0",
+        "spatie/laravel-permission": "^6.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}

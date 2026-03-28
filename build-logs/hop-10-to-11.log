@@ -1,0 +1,170 @@
+#0 building with "upgrader-builder" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.21kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.1s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91
+#3 resolve docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/php:8.2-cli-alpine
+#4 DONE 0.1s
+
+#5 [internal] load metadata for docker.io/library/composer:2
+#5 DONE 0.1s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+
+#8 [base 1/3] FROM docker.io/library/php:8.2-cli-alpine@sha256:33c6abc3b39af5d89c157a4f046aa9f490d746e5c7f4e23831bda7baeb8a4ba7
+#8 resolve docker.io/library/php:8.2-cli-alpine@sha256:33c6abc3b39af5d89c157a4f046aa9f490d746e5c7f4e23831bda7baeb8a4ba7 0.1s done
+#8 DONE 0.1s
+
+#9 FROM docker.io/library/composer:2@sha256:743aebe48ca67097c36819040633ea77e44a561eca135e4fc84c002e63a1ba07
+#9 resolve docker.io/library/composer:2@sha256:743aebe48ca67097c36819040633ea77e44a561eca135e4fc84c002e63a1ba07
+#9 resolve docker.io/library/composer:2@sha256:743aebe48ca67097c36819040633ea77e44a561eca135e4fc84c002e63a1ba07 0.1s done
+#9 DONE 0.1s
+
+#7 [internal] load build context
+#7 transferring context: 32.47kB 0.0s done
+#7 DONE 0.0s
+
+#10 [base 2/3] RUN apk add --no-cache     bash     git     unzip     && rm -rf /var/cache/apk/*
+#10 CACHED
+
+#11 [base 3/3] COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+#11 CACHED
+
+#12 [deps 1/3] WORKDIR /upgrader
+#12 CACHED
+
+#13 [deps 2/3] COPY docker/hop-10-to-11/composer.hop-10-to-11.json ./composer.json
+#13 DONE 0.1s
+
+#14 [deps 3/3] RUN composer install     --no-dev     --no-scripts     --no-interaction     --optimize-autoloader     --prefer-dist
+#14 0.261 No composer.lock file present. Updating dependencies to latest instead of installing from lock file. See https://getcomposer.org/install for more information.
+#14 0.261 Loading composer repositories with package information
+#14 0.552 Updating dependencies
+#14 0.556 Lock file operations: 6 installs, 0 updates, 0 removals
+#14 0.556   - Locking driftingly/rector-laravel (1.2.6)
+#14 0.556   - Locking nikic/php-parser (v4.19.5)
+#14 0.556   - Locking phpstan/phpstan (1.12.33)
+#14 0.556   - Locking rector/rector (1.2.10)
+#14 0.556   - Locking symfony/process (v7.4.5)
+#14 0.556   - Locking webmozart/assert (1.12.1)
+#14 0.556 Writing lock file
+#14 0.556 Installing dependencies from lock file
+#14 0.557 Package operations: 6 installs, 0 updates, 0 removals
+#14 0.560   - Downloading phpstan/phpstan (1.12.33)
+#14 0.561   - Downloading rector/rector (1.2.10)
+#14 0.561   - Downloading driftingly/rector-laravel (1.2.6)
+#14 0.562   - Downloading nikic/php-parser (v4.19.5)
+#14 0.562   - Downloading symfony/process (v7.4.5)
+#14 0.563   - Downloading webmozart/assert (1.12.1)
+#14 0.566  0/6 [>---------------------------]   0%
+#14 0.928  3/6 [==============>-------------]  50%
+#14 1.029  4/6 [==================>---------]  66%
+#14 1.129  5/6 [=======================>----]  83%
+#14 1.210  6/6 [============================] 100%
+#14 1.210   - Installing phpstan/phpstan (1.12.33): Extracting archive
+#14 1.212   - Installing rector/rector (1.2.10): Extracting archive
+#14 1.213   - Installing driftingly/rector-laravel (1.2.6): Extracting archive
+#14 1.214   - Installing nikic/php-parser (v4.19.5): Extracting archive
+#14 1.215   - Installing symfony/process (v7.4.5): Extracting archive
+#14 1.217   - Installing webmozart/assert (1.12.1): Extracting archive
+#14 1.218  0/6 [>---------------------------]   0%
+#14 1.318  5/6 [=======================>----]  83%
+#14 1.451  6/6 [============================] 100%
+#14 1.737 1 package suggestions were added by new dependencies, use `composer suggest` to see details.
+#14 1.737 Generating optimized autoload files
+#14 1.792 3 packages you are using are looking for funding.
+#14 1.792 Use the `composer fund` command to find out more!
+#14 DONE 2.0s
+
+#15 [laravel-cache 1/3] WORKDIR /tmp/warmup
+#15 DONE 0.2s
+
+#16 [laravel-cache 2/3] COPY docker/hop-10-to-11/composer.l11-warmup.json ./composer.json
+#16 DONE 0.1s
+
+#17 [runtime  1/14] RUN adduser -D -u 1000 upgrader
+#17 CACHED
+
+#18 [runtime  2/14] WORKDIR /upgrader
+#18 CACHED
+
+#19 [runtime  3/14] COPY --from=deps /upgrader/vendor /upgrader/vendor
+#19 DONE 0.5s
+
+#20 [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet
+#20 ...
+
+#21 [runtime  4/14] COPY src-container/ /upgrader/src/
+#21 DONE 0.1s
+
+#22 [runtime  5/14] COPY rector-configs/rector.l10-to-l11.php /upgrader/rector.php
+#22 DONE 0.1s
+
+#20 [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet
+#20 ...
+
+#23 [runtime  6/14] COPY rector-configs/workspace-skip-paths.php /upgrader/workspace-skip-paths.php
+#23 DONE 0.1s
+
+#24 [runtime  7/14] COPY docker/hop-10-to-11/docs/ /upgrader/docs/
+#24 DONE 0.1s
+
+#20 [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet
+#20 ...
+
+#25 [runtime  8/14] COPY assets/diff2html.min.css /upgrader/assets/diff2html.min.css
+#25 DONE 0.1s
+
+#26 [runtime  9/14] COPY assets/diff2html.min.js  /upgrader/assets/diff2html.min.js
+#26 DONE 0.1s
+
+#20 [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet
+#20 ...
+
+#27 [runtime 10/14] COPY vendor-patches/rector-laravel-fork/ /upgrader/vendor-patches/rector-laravel-fork/
+#27 DONE 0.1s
+
+#28 [runtime 11/14] COPY docker/hop-10-to-11/entrypoint.sh /upgrader/entrypoint.sh
+#28 DONE 0.1s
+
+#20 [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet
+#20 ...
+
+#29 [runtime 12/14] RUN chmod +x /upgrader/entrypoint.sh
+#29 DONE 0.2s
+
+#20 [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet
+#20 3.123 Your requirements could not be resolved to an installable set of packages.
+#20 ERROR: process "/bin/sh -c COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet" did not complete successfully: exit code: 2
+------
+ > [laravel-cache 3/3] RUN COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet:
+3.123 Your requirements could not be resolved to an installable set of packages.
+------
+Dockerfile:42
+--------------------
+  41 |     COPY docker/hop-10-to-11/composer.l11-warmup.json ./composer.json
+  42 | >>> RUN COMPOSER_CACHE_DIR=/laravel-composer-cache \
+  43 | >>>     composer install \
+  44 | >>>         --no-scripts \
+  45 | >>>         --no-interaction \
+  46 | >>>         --no-progress \
+  47 | >>>         --prefer-dist \
+  48 | >>>         --quiet
+  49 |     
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c COMPOSER_CACHE_DIR=/laravel-composer-cache     composer install         --no-scripts         --no-interaction         --no-progress         --prefer-dist         --quiet" did not complete successfully: exit code: 2
+
+View build details: docker-desktop://dashboard/build/upgrader-builder/upgrader-builder0/ruehfcgropnbcxfgqx0163bth

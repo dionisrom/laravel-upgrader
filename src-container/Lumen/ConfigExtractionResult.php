@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class ConfigExtractionResult
+final class ConfigExtractionResult
 {
     /**
      * @param string[] $copiedConfigs   config names copied from Lumen config/ dir

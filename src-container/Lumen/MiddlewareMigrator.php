@@ -72,7 +72,7 @@ final class MiddlewareMigrator
             }
         }
 
-        $this->emitManualReviewEvents($manualReview + $collector->manualReviewItems);
+        $this->emitManualReviewEvents(array_merge($manualReview, $collector->manualReviewItems));
 
         $this->emitEvent('lumen_middleware_migrated', [
             'global_count' => count($collector->globalMiddleware),
@@ -81,7 +81,7 @@ final class MiddlewareMigrator
 
         return MiddlewareMigrationResult::success(
             $collector->globalMiddleware,
-            array_keys($collector->routeMiddleware),
+            $collector->routeMiddleware,
             array_merge($manualReview, $collector->manualReviewItems),
         );
     }

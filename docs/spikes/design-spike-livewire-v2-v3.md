@@ -32,7 +32,7 @@ This decomposes into two layers:
 | Computed property attribute migration | ~90% | Static methods require manual check |
 | `wire:model` lazy/live default flip | ~95% | Detectable in Blade files |
 | `@livewireScripts` → `@livewireScriptConfig` | ~99% | Exact string replace |
-| `$wire.emit()` → `$wire.dispatch()` | ~95% | Detectable in Blade JS context |
+| `$wire.emit()` → `$wire.dispatch()` | ~95% rename / 0% argument format | Method rename auto-fixed; positional→object argument restructuring requires manual review |
 | Public property security audit | 0% (auto-fix) | 100% flagging, 0% auto-fix — requires intent |
 | `$this->emitUp()` removal | 100% detection | Manual replacement required |
 | Form Object refactor for `$rules` | 0% | Always manual — context-dependent |

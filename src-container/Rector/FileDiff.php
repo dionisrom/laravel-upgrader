@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Rector;
 
-final readonly class FileDiff
+final class FileDiff
 {
     /**
      * @param string[] $appliedRectors

@@ -1,0 +1,196 @@
+{
+    "hop": "12-to-13",
+    "from_version": "12",
+    "to_version": "13",
+    "php_minimum": "8.3",
+    "generated": "2026-03-26",
+    "breaking_changes": [
+        {
+            "id": "l13_dependency_updates",
+            "title": "Updating dependencies (laravel/framework ^13.0, phpunit ^12.0)",
+            "description": "Update laravel/framework to ^13.0, laravel/boost to ^2.0, laravel/tinker to ^3.0, phpunit/phpunit to ^12.0, and pestphp/pest to ^4.0 in composer.json.",
+            "severity": "high",
+            "type": "auto_fix",
+            "auto_fixable": true,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#updating-dependencies",
+            "affected_files": ["composer.json"]
+        },
+        {
+            "id": "l13_php_83_minimum",
+            "title": "PHP 8.3 minimum requirement",
+            "description": "Laravel 13 requires PHP 8.3 or higher. Projects on PHP 8.2 or lower must upgrade PHP before or alongside this hop. The 2D HopPlanner (Phase 3) handles the interleaving of PHP and Laravel hops.",
+            "severity": "high",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#updating-dependencies",
+            "affected_files": ["composer.json"]
+        },
+        {
+            "id": "l13_csrf_middleware_renamed",
+            "title": "CSRF middleware renamed to PreventRequestForgery",
+            "description": "VerifyCsrfToken has been renamed to PreventRequestForgery and now includes Sec-Fetch-Site header verification. VerifyCsrfToken and ValidateCsrfToken remain as deprecated aliases but direct references should be updated.",
+            "severity": "high",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#request-forgery-protection",
+            "affected_files": ["app/Http/**/*.php", "bootstrap/app.php", "tests/**/*.php"]
+        },
+        {
+            "id": "l13_cache_serializable_classes",
+            "title": "Cache serializable_classes configuration defaults to false",
+            "description": "The default cache config now includes serializable_classes set to false, hardening cache unserialization. Apps storing PHP objects in cache must explicitly list allowed classes.",
+            "severity": "medium",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#cache-serializable-classes-configuration",
+            "affected_files": ["config/cache.php"]
+        },
+        {
+            "id": "l13_cache_prefix_session_cookie",
+            "title": "Cache prefixes and session cookie names changed",
+            "description": "Default cache/Redis key prefixes now use hyphenated suffixes. Default session cookie name uses Str::snake(). Apps relying on generated defaults may see changed keys after upgrade.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#cache-prefixes-and-session-cookie-names",
+            "affected_files": ["config/cache.php", "config/session.php", ".env"]
+        },
+        {
+            "id": "l13_container_call_nullable_defaults",
+            "title": "Container::call respects nullable class defaults",
+            "description": "Container::call now returns null for nullable class parameters with null defaults when no binding exists, matching constructor injection behavior from L12.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#container-call-and-nullable-class-defaults",
+            "affected_files": ["app/**/*.php"]
+        },
+        {
+            "id": "l13_mysql_delete_join_order_limit",
+            "title": "MySQL DELETE with JOIN now includes ORDER BY and LIMIT",
+            "description": "Laravel now compiles full DELETE...JOIN queries including ORDER BY and LIMIT for MySQL grammar. Previously silently ignored clauses are now included, which may cause QueryException on unsupported engines.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#mysql-delete-queries-with-join-order-by-and-limit",
+            "affected_files": ["app/**/*.php"]
+        },
+        {
+            "id": "l13_model_booting_nested_instantiation",
+            "title": "Model booting disallows nested instantiation",
+            "description": "Creating a new model instance while that model is still booting now throws LogicException. Move logic that instantiates models outside boot() methods.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#model-booting-and-nested-instantiation",
+            "affected_files": ["app/Models/**/*.php"]
+        },
+        {
+            "id": "l13_polymorphic_pivot_table_names",
+            "title": "Polymorphic pivot table name generation pluralized",
+            "description": "Table names inferred for polymorphic pivot models using custom pivot classes are now pluralized. Explicitly define the table name on your pivot model if needed.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#polymorphic-pivot-table-name-generation",
+            "affected_files": ["app/Models/**/*.php"]
+        },
+        {
+            "id": "l13_collection_model_serialization_relations",
+            "title": "Collection serialization restores eager-loaded relations",
+            "description": "When Eloquent model collections are serialized and restored (e.g. in queued jobs), eager-loaded relations are now restored. Code depending on relations not being present after deserialization may need adjustment.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#collection-model-serialization-restores-eager-loaded-relations",
+            "affected_files": ["app/Jobs/**/*.php"]
+        },
+        {
+            "id": "l13_job_attempted_event_exception",
+            "title": "JobAttempted event exposes exception object",
+            "description": "JobAttempted event now has $exception property (or null) replacing the boolean $exceptionOccurred property. Listeners must be updated.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#jobattempted-event-exception-payload",
+            "affected_files": ["app/Listeners/**/*.php"]
+        },
+        {
+            "id": "l13_queue_busy_event_rename",
+            "title": "QueueBusy event $connection renamed to $connectionName",
+            "description": "The QueueBusy event property $connection has been renamed to $connectionName for consistency with other queue events.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#queuebusy-event-property-rename",
+            "affected_files": ["app/Listeners/**/*.php"]
+        },
+        {
+            "id": "l13_domain_route_precedence",
+            "title": "Domain routes prioritized before non-domain routes",
+            "description": "Routes with an explicit domain are now prioritized before non-domain routes in route matching. Review route matching behavior if relying on previous precedence.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#domain-route-registration-precedence",
+            "affected_files": ["routes/**/*.php"]
+        },
+        {
+            "id": "l13_manager_extend_callback_binding",
+            "title": "Manager extend callbacks bound to manager instance",
+            "description": "Custom driver closures registered via manager extend() are now bound to the manager instance. If callbacks relied on another $this binding, move values into closure captures.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#manager-extend-callback-binding",
+            "affected_files": ["app/Providers/**/*.php"]
+        },
+        {
+            "id": "l13_str_factories_reset_between_tests",
+            "title": "Str factories reset between tests",
+            "description": "Laravel now resets custom Str factories (UUID/ULID/random string) during test teardown. Set them in each relevant test or setup hook.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#str-factories-reset-between-tests",
+            "affected_files": ["tests/**/*.php"]
+        },
+        {
+            "id": "l13_pagination_bootstrap_view_names",
+            "title": "Pagination Bootstrap view names changed",
+            "description": "Internal pagination view names for Bootstrap 3 changed from pagination::default to pagination::bootstrap-3 and pagination::simple-default to pagination::simple-bootstrap-3.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#pagination-bootstrap-view-names",
+            "affected_files": ["app/**/*.php", "resources/views/**/*.blade.php"]
+        },
+        {
+            "id": "l13_contracts_new_methods",
+            "title": "New methods on Dispatcher, ResponseFactory, MustVerifyEmail contracts",
+            "description": "Dispatcher contract adds dispatchAfterResponse(), ResponseFactory adds eventStream(), MustVerifyEmail adds markEmailAsUnverified(). Custom implementations must add these methods.",
+            "severity": "low",
+            "type": "manual_review",
+            "auto_fixable": false,
+            "rector_rule": null,
+            "docs_url": "https://laravel.com/docs/13.x/upgrade#contracts",
+            "affected_files": ["app/**/*.php"]
+        }
+    ]
+}

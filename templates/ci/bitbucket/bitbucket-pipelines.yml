@@ -1,0 +1,168 @@
+##
+## Laravel Enterprise Upgrader — Bitbucket Pipelines
+##
+## Setup:
+##   1. Copy this file to bitbucket-pipelines.yml in your repository root.
+##   2. Add UPGRADER_TOKEN as a secured repository variable
+##      (Repository settings → Pipelines → Repository variables).
+##   3. For auto-upgrade mode, also add BB_AUTH_TOKEN (an app password with
+##      repository:write scope) and BITBUCKET_USERNAME as variables.
+##
+## Trigger: Pipelines → Run pipeline → select a custom pipeline below
+##
+
+image: atlassian/default-image:4
+
+definitions:
+  services:
+    docker:
+      memory: 2048
+
+  caches:
+    upgrader-image: .cache/upgrader-image.tar
+
+  steps:
+    - step: &run-upgrade
+        name: Run Laravel Upgrader
+        services:
+          - docker
+        caches:
+          - upgrader-image
+        script:
+          - mkdir -p .cache
+          - |
+            if [ -f ".cache/upgrader-image.tar" ]; then
+              echo "Loading cached upgrader image..."
+              docker load -i .cache/upgrader-image.tar
+            else
+              echo "Pulling upgrader image..."
+              docker pull "${UPGRADER_IMAGE:-{{IMAGE}}}"
+              docker save "${UPGRADER_IMAGE:-{{IMAGE}}}" \
+                -o .cache/upgrader-image.tar
+            fi
+
+          - |
+            EXTRA_FLAGS=""
+            if [ "${UPGRADE_MODE:-{{DEFAULT_MODE}}}" = "dry-run" ]; then
+              EXTRA_FLAGS="--dry-run"
+            fi
+
+            docker run --rm \
+              --network=none \
+              -v "$BITBUCKET_CLONE_DIR:/workspace" \
+              -e UPGRADER_TOKEN="${UPGRADER_TOKEN}" \
+              "${UPGRADER_IMAGE:-{{IMAGE}}}" upgrade \
+              --from="${FROM_VERSION:-{{FROM_VERSION}}}" \
+              --to="${TO_VERSION:-{{TO_VERSION}}}" \
+              --output="/workspace/${REPORT_DIR:-.upgrader/reports}" \
+              ${EXTRA_FLAGS}
+        artifacts:
+          - .upgrader/reports/**
+
+    - step: &post-pr-comment
+        name: Post upgrade summary to PR (dry-run)
+        script:
+          - |
+            REPORT_FILE="${REPORT_DIR:-.upgrader/reports}/summary.md"
+            if [ ! -f "$REPORT_FILE" ]; then
+              echo "No summary report found — skipping PR comment."
+              exit 0
+            fi
+
+            if [ -z "$BITBUCKET_PR_ID" ]; then
+              echo "Not running in a PR context — skipping PR comment."
+              exit 0
+            fi
+
+            BODY=$(cat "$REPORT_FILE" | python3 -c 'import sys,json; print(json.dumps({"content":{"raw":sys.stdin.read()}}))')
+            curl -s --fail-with-body \
+              -u "${BITBUCKET_USERNAME}:${BB_AUTH_TOKEN}" \
+              -X POST \
+              -H "Content-Type: application/json" \
+              "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_FULL_NAME}/pullrequests/${BITBUCKET_PR_ID}/comments" \
+              -d "$BODY"
+
+    - step: &create-pr
+        name: Commit changes and open pull request
+        script:
+          - |
+            BRANCH="upgrade/l${FROM_VERSION:-{{FROM_VERSION}}}-to-l${TO_VERSION:-{{TO_VERSION}}}"
+
+            git config user.email "ci@bitbucket.org"
+            git config user.name "Bitbucket Pipelines"
+            git remote set-url origin \
+              "https://${BITBUCKET_USERNAME}:${BB_AUTH_TOKEN}@bitbucket.org/${BITBUCKET_REPO_FULL_NAME}.git"
+
+            git checkout -b "$BRANCH" || git checkout "$BRANCH"
+            git add -A
+
+            if git diff --cached --quiet; then
+              echo "No changes to commit — repository may already be up to date."
+              exit 0
+            fi
+
+            git commit -m "chore: upgrade Laravel ${FROM_VERSION:-{{FROM_VERSION}}} to ${TO_VERSION:-{{TO_VERSION}}}"
+            git push origin "$BRANCH"
+
+            # Open a pull request via the Bitbucket REST API
+            curl -s --fail-with-body \
+              -u "${BITBUCKET_USERNAME}:${BB_AUTH_TOKEN}" \
+              -X POST \
+              -H "Content-Type: application/json" \
+              "https://api.bitbucket.org/2.0/repositories/${BITBUCKET_REPO_FULL_NAME}/pullrequests" \
+              -d "{
+                \"title\": \"Laravel ${FROM_VERSION:-{{FROM_VERSION}}} to ${TO_VERSION:-{{TO_VERSION}}} upgrade\",
+                \"description\": \"Automated upgrade by Laravel Enterprise Upgrader. Review the pipeline artifact before merging.\",
+                \"source\": { \"branch\": { \"name\": \"${BRANCH}\" } },
+                \"destination\": { \"branch\": { \"name\": \"${BITBUCKET_BRANCH}\" } },
+                \"close_source_branch\": true
+              }"
+
+pipelines:
+  custom:
+    # ── Dry-run: analyse and produce a report, no code changes ───────────────
+    laravel-upgrade-dry-run:
+      - variables:
+          - name: FROM_VERSION
+            default: '{{FROM_VERSION}}'
+          - name: TO_VERSION
+            default: '{{TO_VERSION}}'
+          - name: UPGRADER_IMAGE
+            default: '{{IMAGE}}'
+      - step:
+          <<: *run-upgrade
+          name: 'Dry-run upgrade (report only)'
+      - step: *post-pr-comment
+
+    # ── Auto-upgrade: apply changes, commit to branch, open PR ──────────────
+    laravel-upgrade-auto:
+      - variables:
+          - name: FROM_VERSION
+            default: '{{FROM_VERSION}}'
+          - name: TO_VERSION
+            default: '{{TO_VERSION}}'
+          - name: UPGRADER_IMAGE
+            default: '{{IMAGE}}'
+      - step:
+          <<: *run-upgrade
+          name: 'Apply Laravel upgrade'
+          script:
+            - mkdir -p .cache
+            - |
+              if [ -f ".cache/upgrader-image.tar" ]; then
+                docker load -i .cache/upgrader-image.tar
+              else
+                docker pull "${UPGRADER_IMAGE:-{{IMAGE}}}"
+                docker save "${UPGRADER_IMAGE:-{{IMAGE}}}" \
+                  -o .cache/upgrader-image.tar
+              fi
+            - |
+              docker run --rm \
+                --network=none \
+                -v "$BITBUCKET_CLONE_DIR:/workspace" \
+                -e UPGRADER_TOKEN="${UPGRADER_TOKEN}" \
+                "${UPGRADER_IMAGE:-{{IMAGE}}}" upgrade \
+                --from="${FROM_VERSION:-{{FROM_VERSION}}}" \
+                --to="${TO_VERSION:-{{TO_VERSION}}}" \
+                --output="/workspace/${REPORT_DIR:-.upgrader/reports}"
+      - step: *create-pr

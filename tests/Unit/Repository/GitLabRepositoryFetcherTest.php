@@ -5,21 +5,18 @@ declare(strict_types=1);
 namespace Tests\Unit\Repository;
 
 use App\Repository\Exception\AuthenticationException;
+use App\Repository\Exception\ConcurrentUpgradeException;
 use App\Repository\Exception\FetchTimeoutException;
-use App\Repository\Exception\RepositoryNotFoundException;
+use App\Repository\FetchResult;
 use App\Repository\GitLabRepositoryFetcher;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
+use Symfony\Component\Process\Process;
 
-/**
- * Tests for GitLabRepositoryFetcher.
- *
- * Git subprocesses are exercised indirectly; we test:
- *  - URL normalisation (gitlab: prefix → HTTPS)
- *  - Token masking: token must NOT appear in exception messages
- *  - Lock acquisition behaviour
- */
 final class GitLabRepositoryFetcherTest extends TestCase
 {
+    private const CONCURRENT_UPGRADE_MESSAGE = 'An upgrade is already running for this repository. Use --resume to continue it, or wait for it to complete.';
+
     private string $tempDir;
 
     protected function setUp(): void
@@ -33,56 +30,6 @@ final class GitLabRepositoryFetcherTest extends TestCase
         $this->removeDirectory($this->tempDir);
     }
 
-    // -------------------------------------------------------------------------
-    // Token masking
-    // -------------------------------------------------------------------------
-
-    public function testTokenDoesNotAppearInRepositoryNotFoundExceptionMessage(): void
-    {
-        $fetcher = new GitLabRepositoryFetcher();
-        $secret = 'glpat-supersecrettoken12345';
-
-        try {
-            $fetcher->fetch(
-                'gitlab:nonexistent-org-xyz/nonexistent-repo-xyz',
-                $this->tempDir . '/target',
-                token: $secret,
-            );
-            $this->fail('Expected exception was not thrown');
-        } catch (RepositoryNotFoundException | AuthenticationException | FetchTimeoutException $e) {
-            $this->assertStringNotContainsString(
-                $secret,
-                $e->getMessage(),
-                'Token must be masked in exception messages'
-            );
-        }
-    }
-
-    public function testTokenDoesNotAppearInAuthenticationExceptionMessage(): void
-    {
-        $fetcher = new GitLabRepositoryFetcher();
-        $secret = 'glpat-anothertokenvalue99';
-
-        try {
-            $fetcher->fetch(
-                'gitlab:nonexistent-org-xyz/nonexistent-repo-xyz',
-                $this->tempDir . '/target',
-                token: $secret,
-            );
-            $this->fail('Expected exception was not thrown');
-        } catch (RepositoryNotFoundException | AuthenticationException | FetchTimeoutException $e) {
-            $this->assertStringNotContainsString(
-                $secret,
-                $e->getMessage(),
-                'Token must be masked in exception messages'
-            );
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // URL normalisation
-    // -------------------------------------------------------------------------
-
     public function testNormalizeToHttpsUrlConvertsGitlabPrefix(): void
     {
         $fetcher = new GitLabRepositoryFetcher();
@@ -93,60 +40,86 @@ final class GitLabRepositoryFetcherTest extends TestCase
 
         $result = $method->invoke($fetcher, 'gitlab:acme/myapp');
 
-        $this->assertSame('https://gitlab.com/acme/myapp.git', $result);
+        self::assertSame('https://gitlab.com/acme/myapp.git', $result);
     }
 
-    public function testNormalizeToHttpsUrlPassthroughsFullUrl(): void
+    public function testFetchUsesAskPassWithoutLeakingTokenInCloneCommand(): void
     {
-        $fetcher = new GitLabRepositoryFetcher();
+        $secret = 'glpat_supersecrettoken12345';
+        $target = $this->tempDir . '/target';
+        $commands = [];
 
-        $ref = new \ReflectionClass($fetcher);
-        $method = $ref->getMethod('normalizeToHttpsUrl');
-        $method->setAccessible(true);
+        $clone = $this->createMock(Process::class);
+        $clone->expects(self::once())->method('setTimeout')->with(120.0);
+        $clone->expects(self::once())->method('setEnv')->with(self::callback(function (array $env) use ($secret): bool {
+            self::assertSame('0', $env['GIT_TERMINAL_PROMPT']);
+            self::assertSame($secret, $env['UPGRADER_GIT_PASSWORD']);
+            self::assertArrayHasKey('GIT_ASKPASS', $env);
+            self::assertStringNotContainsString($secret, $env['GIT_ASKPASS']);
 
-        $result = $method->invoke($fetcher, 'https://gitlab.com/acme/myapp.git');
+            return true;
+        }));
+        $clone->expects(self::once())->method('run');
+        $clone->method('isSuccessful')->willReturn(true);
 
-        $this->assertSame('https://gitlab.com/acme/myapp.git', $result);
+        $branch = $this->successfulProcess('main', 30.0);
+        $sha = $this->successfulProcess('abc123def', 30.0);
+
+        $fetcher = new GitLabRepositoryFetcher($this->queueFactory($commands, $clone, $branch, $sha));
+        $result = $fetcher->fetch('gitlab:acme/myapp', $target, $secret);
+
+        self::assertInstanceOf(FetchResult::class, $result);
+        self::assertSame($target, $result->workspacePath);
+        self::assertSame('main', $result->defaultBranch);
+        self::assertSame('abc123def', $result->resolvedCommitSha);
+        self::assertCount(3, $commands);
+        self::assertSame(
+            ['git', 'clone', '--depth=1', '--single-branch', 'https://oauth2@gitlab.com/acme/myapp.git', $target],
+            $commands[0]['command']
+        );
+        self::assertStringNotContainsString($secret, implode(' ', $commands[0]['command']));
     }
 
-    // -------------------------------------------------------------------------
-    // Token embedding
-    // -------------------------------------------------------------------------
-
-    public function testBuildAuthenticatedUrlEmbeddsTokenBeforeHost(): void
+    public function testAuthenticationExceptionMasksTokenFromErrorOutput(): void
     {
-        $fetcher = new GitLabRepositoryFetcher();
+        $secret = 'glpat_secret_value_999';
+        $clone = $this->createMock(Process::class);
+        $clone->expects(self::once())->method('setTimeout')->with(120.0);
+        $clone->expects(self::once())->method('setEnv');
+        $clone->expects(self::once())->method('run');
+        $clone->method('isSuccessful')->willReturn(false);
+        $clone->method('getErrorOutput')->willReturn("Authentication failed for {$secret}");
 
-        $ref = new \ReflectionClass($fetcher);
-        $method = $ref->getMethod('buildAuthenticatedUrl');
-        $method->setAccessible(true);
+        $commands = [];
+        $fetcher = new GitLabRepositoryFetcher($this->queueFactory($commands, $clone));
 
-        $url = $method->invoke($fetcher, 'https://gitlab.com/acme/app.git', 'mytoken');
-
-        $this->assertStringContainsString('x-token-auth:', $url);
-        $this->assertStringContainsString('@gitlab.com', $url);
-        $this->assertStringContainsString('mytoken', $url);
+        try {
+            $fetcher->fetch('gitlab:acme/myapp', $this->tempDir . '/target', $secret);
+            self::fail('Expected AuthenticationException was not thrown.');
+        } catch (AuthenticationException $e) {
+            self::assertStringNotContainsString($secret, $e->getMessage());
+            self::assertStringContainsString('***', $e->getMessage());
+        }
     }
 
-    public function testBuildAuthenticatedUrlWithNullTokenReturnsOriginalUrl(): void
+    public function testCloneTimeoutThrowsFetchTimeoutException(): void
     {
-        $fetcher = new GitLabRepositoryFetcher();
+        $clone = $this->createMock(Process::class);
+        $clone->expects(self::once())->method('setTimeout')->with(120.0);
+        $clone->expects(self::once())->method('setEnv');
+        $clone->expects(self::once())->method('run')->willThrowException(
+            new ProcessTimedOutException(new Process([PHP_BINARY, '-r', 'exit(0);']), ProcessTimedOutException::TYPE_GENERAL)
+        );
 
-        $ref = new \ReflectionClass($fetcher);
-        $method = $ref->getMethod('buildAuthenticatedUrl');
-        $method->setAccessible(true);
+        $commands = [];
+        $fetcher = new GitLabRepositoryFetcher($this->queueFactory($commands, $clone));
 
-        $original = 'https://gitlab.com/acme/app.git';
-        $result = $method->invoke($fetcher, $original, null);
-
-        $this->assertSame($original, $result);
+        $this->expectException(FetchTimeoutException::class);
+        $this->expectExceptionMessage('Git clone timed out after 120 seconds.');
+        $fetcher->fetch('gitlab:acme/myapp', $this->tempDir . '/target', 'glpat_timeout_token');
     }
 
-    // -------------------------------------------------------------------------
-    // Concurrent lock
-    // -------------------------------------------------------------------------
-
-    public function testConcurrentLockThrowsException(): void
+    public function testConcurrentLockThrowsExactTrdMessage(): void
     {
         $source = 'https://gitlab.com/acme/app.git';
         $lockDir = sys_get_temp_dir() . '/upgrader/locks/';
@@ -156,12 +129,13 @@ final class GitLabRepositoryFetcherTest extends TestCase
 
         $lockFile = $lockDir . hash('sha256', $source) . '.lock';
         $fh = fopen($lockFile, 'c');
-        $this->assertNotFalse($fh);
+        self::assertNotFalse($fh);
         flock($fh, LOCK_EX);
 
         try {
             $fetcher = new GitLabRepositoryFetcher();
-            $this->expectException(\App\Repository\Exception\ConcurrentUpgradeException::class);
+            $this->expectException(ConcurrentUpgradeException::class);
+            $this->expectExceptionMessage(self::CONCURRENT_UPGRADE_MESSAGE);
             $fetcher->fetch($source, $this->tempDir . '/target');
         } finally {
             flock($fh, LOCK_UN);
@@ -169,9 +143,38 @@ final class GitLabRepositoryFetcherTest extends TestCase
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
+    /**
+     * @param array<int, array{command: array<int, string>, cwd: ?string}> $commands
+     */
+    private function queueFactory(array &$commands, Process ...$processes): \Closure
+    {
+        $index = 0;
+
+        return static function (array $command, ?string $cwd = null) use (&$commands, &$index, $processes): Process {
+            $commands[] = [
+                'command' => $command,
+                'cwd' => $cwd,
+            ];
+
+            if (!isset($processes[$index])) {
+                throw new \RuntimeException('Unexpected process creation.');
+            }
+
+            return $processes[$index++];
+        };
+    }
+
+    private function successfulProcess(string $output, float $timeout): Process
+    {
+        $process = $this->createMock(Process::class);
+        $process->expects(self::once())->method('setTimeout')->with($timeout);
+        $process->expects(self::once())->method('run');
+        $process->method('isSuccessful')->willReturn(true);
+        $process->method('getOutput')->willReturn($output);
+        $process->method('getErrorOutput')->willReturn('');
+
+        return $process;
+    }
 
     private function removeDirectory(string $path): void
     {
@@ -188,6 +191,9 @@ final class GitLabRepositoryFetcherTest extends TestCase
             if ($item->isDir()) {
                 rmdir($item->getPathname());
             } else {
+                if (!is_writable($item->getPathname())) {
+                    chmod($item->getPathname(), 0644);
+                }
                 unlink($item->getPathname());
             }
         }

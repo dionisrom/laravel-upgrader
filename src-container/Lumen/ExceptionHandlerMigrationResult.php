@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace AppContainer\Lumen;
 
-final readonly class ExceptionHandlerMigrationResult
+final class ExceptionHandlerMigrationResult
 {
     /**
      * @param string[] $mappedMethods    Lumen handler methods successfully mapped
