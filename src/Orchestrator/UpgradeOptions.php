@@ -18,6 +18,7 @@ final readonly class UpgradeOptions
         public bool $withArtisanVerify = false,
         public array $reportFormats = ['html', 'json', 'md'],
         public bool $dryRun = false,
+        public ?string $repoLabel = null,
         public ?string $extraComposerCacheDir = null,
         public bool $skipDependencyUpgrader = false,
     ) {}

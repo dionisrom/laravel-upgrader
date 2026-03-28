@@ -148,7 +148,7 @@ final class RunCommand extends Command
 
         // 7. Set up EventStreamer with TerminalRenderer + AuditLogWriter
         $streamer = new EventStreamer();
-        $streamer->addConsumer(new TerminalRenderer($safeOutput));
+        $streamer->addConsumer(new TerminalRenderer($safeOutput, $repo));
 
         $logPath = rtrim($outputDir, '/') . '/audit.jsonnd';
         $repoSha = substr(hash('sha256', $repo . time()), 0, 12);
@@ -228,6 +228,7 @@ final class RunCommand extends Command
             withArtisanVerify: $withArtisanVerify,
             reportFormats: $formats,
             dryRun: $dryRun,
+            repoLabel: $repo,
         );
 
         try {

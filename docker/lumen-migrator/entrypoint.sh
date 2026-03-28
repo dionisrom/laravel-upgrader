@@ -11,6 +11,7 @@ set -euo pipefail
 
 HOP="lumen-migrator"
 WORKSPACE="${UPGRADER_WORKSPACE:-/workspace}"
+REPO_LABEL="${UPGRADER_REPO_LABEL:-}"
 PHP_BIN="${PHP_BIN:-php}"
 SRC="/upgrader/src"
 
@@ -74,7 +75,7 @@ git config --global --add safe.directory "${WORKSPACE}" 2>/dev/null || true
 
 # ─── Pipeline start ───────────────────────────────────────────────────────────
 
-emit "{\"event\":\"pipeline_start\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"workspace\":\"${WORKSPACE}\"}"
+emit "{\"event\":\"pipeline_start\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"workspace\":\"${WORKSPACE}\",\"repo\":\"${REPO_LABEL}\"}"
 
 if ! "${PHP_BIN}" "${SRC}/Lumen/LumenMigrationPipeline.php" "${WORKSPACE}" >&2 2>&1; then
     emit "{\"event\":\"stage_error\",\"stage\":\"LumenMigrationPipeline\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"error\":\"Pipeline runner exited with a non-zero status\"}"

@@ -108,7 +108,7 @@ final class AnalyseCommand extends Command
 
         // 5. Set up EventStreamer (dry-run: TerminalRenderer only, no write-back)
         $streamer = new EventStreamer();
-        $streamer->addConsumer(new TerminalRenderer($safeOutput));
+        $streamer->addConsumer(new TerminalRenderer($safeOutput, $repo));
 
         $logPath = rtrim($outputDir, '/') . '/audit.jsonnd';
         $repoSha = substr(hash('sha256', $repo . time()), 0, 12);
@@ -178,7 +178,7 @@ final class AnalyseCommand extends Command
         $safeOutput->writeln('<info>Running analysis (dry-run, no transforms will be applied)...</info>');
 
         try {
-            $orchestrator->run($fetchResult->workspacePath, $from, $to, new UpgradeOptions(dryRun: true));
+            $orchestrator->run($fetchResult->workspacePath, $from, $to, new UpgradeOptions(dryRun: true, repoLabel: $repo));
         } catch (OrchestratorException $e) {
             $safeOutput->writeln(sprintf('<error>Analysis failed: %s</error>', $this->redactor->redact($e->getMessage())));
             return Command::FAILURE;

@@ -26,6 +26,15 @@ final class TerminalRendererTest extends TestCase
         self::assertStringContainsString('my/app', $this->output->fetch());
     }
 
+    public function testPipelineStartFallsBackToConfiguredRepoLabel(): void
+    {
+        $renderer = new TerminalRenderer($this->output, 'configured/repo');
+
+        $renderer->consume(['event' => 'pipeline_start']);
+
+        self::assertStringContainsString('configured/repo', $this->output->fetch());
+    }
+
     public function testPipelineCompletePassedRendersSuccess(): void
     {
         $this->renderer->consume(['event' => 'pipeline_complete', 'passed' => true]);

@@ -29,6 +29,7 @@ final class EventParserTest extends TestCase
             'hop'          => '8_to_9',
             'ts'           => 1_700_000_000.0,
             'seq'          => 1,
+            'repo'         => 'C:/dev/example/app',
             'total_files'  => 120,
             'php_files'    => 100,
             'config_files' => 20,
@@ -41,6 +42,7 @@ final class EventParserTest extends TestCase
         self::assertSame(EventCatalogue::PIPELINE_START, $event->event);
         self::assertSame('8_to_9', $event->hop);
         self::assertSame(1, $event->seq);
+        self::assertSame('C:/dev/example/app', $event->repo);
         self::assertSame(120, $event->totalFiles);
         self::assertSame(100, $event->phpFiles);
         self::assertSame(20, $event->configFiles);
@@ -145,7 +147,7 @@ final class EventParserTest extends TestCase
     public function testParseLines(): void
     {
         $ndjson = implode("\n", [
-            json_encode(['event' => EventCatalogue::PIPELINE_START, 'hop' => '8_to_9', 'ts' => 1.0, 'seq' => 1, 'total_files' => 10, 'php_files' => 8, 'config_files' => 2]),
+            json_encode(['event' => EventCatalogue::PIPELINE_START, 'hop' => '8_to_9', 'ts' => 1.0, 'seq' => 1, 'repo' => 'repo-name', 'total_files' => 10, 'php_files' => 8, 'config_files' => 2]),
             json_encode(['event' => EventCatalogue::STAGE_START, 'hop' => '8_to_9', 'ts' => 2.0, 'seq' => 2, 'stage' => 'rector']),
             'bad json',
         ]);
@@ -154,6 +156,7 @@ final class EventParserTest extends TestCase
 
         self::assertCount(3, $events);
         self::assertInstanceOf(PipelineStartEvent::class, $events[0]);
+        self::assertSame('repo-name', $events[0]->repo);
         self::assertInstanceOf(StageStartEvent::class, $events[1]);
         self::assertInstanceOf(WarningEvent::class, $events[2]);
     }

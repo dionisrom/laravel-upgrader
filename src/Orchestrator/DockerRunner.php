@@ -50,6 +50,11 @@ final class DockerRunner
             '--env', 'UPGRADER_WORKSPACE=/repo',
         ];
 
+        if ($options?->repoLabel !== null && trim($options->repoLabel) !== '') {
+            $cmd[] = '--env';
+            $cmd[] = 'UPGRADER_REPO_LABEL=' . $options->repoLabel;
+        }
+
         if ($options?->extraComposerCacheDir !== null) {
             $cmd[] = '-v';
             $cmd[] = "{$options->extraComposerCacheDir}:/composer-cache:rw";

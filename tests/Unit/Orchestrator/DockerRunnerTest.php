@@ -68,11 +68,12 @@ final class DockerRunnerTest extends TestCase
     public function testBuildCommandMountsExtraComposerCacheWhenConfigured(): void
     {
         $runner = new DockerRunner();
-        $options = new UpgradeOptions(extraComposerCacheDir: '/tmp/cache', skipDependencyUpgrader: true);
+        $options = new UpgradeOptions(extraComposerCacheDir: '/tmp/cache', repoLabel: 'github:org/repo', skipDependencyUpgrader: true);
 
         $command = $runner->buildCommand($this->hop, '/ws', '/out', $options);
 
         self::assertContains('/tmp/cache:/composer-cache:rw', $command);
+        self::assertContains('UPGRADER_REPO_LABEL=github:org/repo', $command);
         self::assertContains('UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache', $command);
         self::assertContains('UPGRADER_SKIP_DEPENDENCY_UPGRADER=1', $command);
         self::assertContains('--network=none', $command);

@@ -131,6 +131,7 @@ final class UpgradeOrchestrator
                     withArtisanVerify: $options->withArtisanVerify,
                     reportFormats: $options->reportFormats,
                     dryRun: $options->dryRun,
+                    repoLabel: $options->repoLabel,
                     extraComposerCacheDir: $sharedComposerCacheDir,
                     skipDependencyUpgrader: false,
                 );
@@ -143,6 +144,7 @@ final class UpgradeOrchestrator
                     withArtisanVerify: $hopOptions->withArtisanVerify,
                     reportFormats: $hopOptions->reportFormats,
                     dryRun: $hopOptions->dryRun,
+                    repoLabel: $hopOptions->repoLabel,
                     extraComposerCacheDir: $hopOptions->extraComposerCacheDir,
                     skipDependencyUpgrader: true,
                 );

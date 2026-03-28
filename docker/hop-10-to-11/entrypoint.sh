@@ -11,6 +11,7 @@ set -euo pipefail
 
 HOP="10-to-11"
 WORKSPACE="${UPGRADER_WORKSPACE:-/workspace}"
+REPO_LABEL="${UPGRADER_REPO_LABEL:-}"
 PHP_BIN="${PHP_BIN:-php}"
 RECTOR_BIN="/upgrader/vendor/bin/rector"
 RECTOR_CONFIG="/upgrader/rector.php"
@@ -165,7 +166,7 @@ fi
 
 # ─── Pipeline start ───────────────────────────────────────────────────────────
 
-emit "{\"event\":\"pipeline_start\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"workspace\":\"${WORKSPACE}\"}"
+emit "{\"event\":\"pipeline_start\",\"hop\":\"${HOP}\",\"ts\":$(ts),\"workspace\":\"${WORKSPACE}\",\"repo\":\"${REPO_LABEL}\"}"
 
 # ─── Stage 1: InventoryScanner ────────────────────────────────────────────────
 
