@@ -245,5 +245,78 @@
       "manual_review_required": false,
       "official_doc_anchor": "https://laravel.com/docs/9.x/upgrade#the-opis-closure-library"
     }
+  ],
+  "dependency_replacements": [
+    {
+      "old_package": "facade/ignition",
+      "old_constraint": "^2.0",
+      "new_package": "spatie/laravel-ignition",
+      "new_constraint": "^1.0",
+      "reason": "facade/ignition is deprecated. Spatie Laravel Ignition is the official replacement with Laravel 9 support.",
+      "rector_rules": [],
+      "code_changes_required": true,
+      "namespace_mappings": [
+        {
+          "old": "Facade\\Ignition",
+          "new": "Spatie\\LaravelIgnition"
+        }
+      ],
+      "manual_review_required": true,
+      "approval_required": true
+    },
+    {
+      "old_package": "fideloper/proxy",
+      "old_constraint": "^4.0",
+      "new_package": null,
+      "new_constraint": null,
+      "reason": "TrustProxies middleware is now included in Laravel core. Remove fideloper/proxy and update middleware.",
+      "rector_rules": [],
+      "code_changes_required": true,
+      "namespace_mappings": [
+        {
+          "old": "Fideloper\\Proxy\\TrustProxies",
+          "new": "Illuminate\\Http\\Middleware\\TrustProxies"
+        }
+      ],
+      "manual_review_required": true,
+      "approval_required": true
+    },
+    {
+      "old_package": "swiftmailer/swiftmailer",
+      "old_constraint": "^6.0",
+      "new_package": "symfony/mailer",
+      "new_constraint": "^6.0",
+      "reason": "SwiftMailer is replaced by Symfony Mailer in Laravel 9. This requires significant code changes.",
+      "rector_rules": [],
+      "code_changes_required": true,
+      "namespace_mappings": [
+        {
+          "old": "Swift_",
+          "new": "Symfony\\Component\\Mailer"
+        }
+      ],
+      "manual_review_required": true,
+      "approval_required": true
+    }
+  ],
+  "dependency_removals": [
+    {
+      "package": "fruitcake/laravel-cors",
+      "constraint": "^2.0|^3.0",
+      "reason": "Laravel 9 ships with CORS support built-in via config/cors.php. Remove this package and use the built-in solution.",
+      "replacement": "laravel/framework (built-in)",
+      "approval_required": true,
+      "safe_if_unused": true,
+      "affects_lumen_only": false
+    },
+    {
+      "package": "laravel/lumen-framework",
+      "constraint": "^8.0",
+      "reason": "Migrating from Lumen to Laravel. Replace with laravel/framework.",
+      "replacement": "laravel/framework",
+      "approval_required": false,
+      "safe_if_unused": false,
+      "affects_lumen_only": true
+    }
   ]
 }

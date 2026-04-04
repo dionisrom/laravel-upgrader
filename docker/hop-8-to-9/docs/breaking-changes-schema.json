@@ -1,0 +1,211 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Breaking Changes Schema with Dependency Replacement Tracking",
+  "description": "Schema for breaking-changes.json files with enhanced dependency replacement tracking",
+  "type": "object",
+  "required": ["hop", "laravel_from", "laravel_to", "breaking_changes"],
+  "properties": {
+    "hop": {
+      "type": "string",
+      "description": "Hop identifier (e.g., '8_to_9')"
+    },
+    "laravel_from": {
+      "type": "string",
+      "description": "Source Laravel version"
+    },
+    "laravel_to": {
+      "type": "string",
+      "description": "Target Laravel version"
+    },
+    "php_minimum": {
+      "type": "string",
+      "description": "Minimum PHP version required"
+    },
+    "last_curated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date when this file was last updated"
+    },
+    "breaking_changes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/BreakingChange"
+      }
+    },
+    "dependency_replacements": {
+      "type": "array",
+      "description": "Package replacements that require code updates",
+      "items": {
+        "$ref": "#/definitions/DependencyReplacement"
+      }
+    },
+    "dependency_removals": {
+      "type": "array",
+      "description": "Packages that should be removed (with approval)",
+      "items": {
+        "$ref": "#/definitions/DependencyRemoval"
+      }
+    }
+  },
+  "definitions": {
+    "BreakingChange": {
+      "type": "object",
+      "required": ["id", "severity", "category", "title", "description"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this change"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["blocker", "high", "medium", "low"],
+          "description": "Severity level of the change"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "dependencies",
+            "eloquent",
+            "routing",
+            "middleware",
+            "config",
+            "helpers",
+            "environment",
+            "package",
+            "framework",
+            "lumen"
+          ],
+          "description": "Category of the breaking change"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title of the change"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the change"
+        },
+        "rector_rule": {
+          "type": ["string", "null"],
+          "description": "FQCN of the Rector rule that handles this change"
+        },
+        "automated": {
+          "type": "boolean",
+          "description": "Whether this change can be fully automated"
+        },
+        "affects_lumen": {
+          "type": "boolean",
+          "description": "Whether this change affects Lumen applications"
+        },
+        "manual_review_required": {
+          "type": "boolean",
+          "description": "Whether manual review is required after automated changes"
+        },
+        "official_doc_anchor": {
+          "type": "string",
+          "description": "Link to official Laravel upgrade documentation"
+        }
+      }
+    },
+    "DependencyReplacement": {
+      "type": "object",
+      "required": ["old_package", "new_package", "reason"],
+      "properties": {
+        "old_package": {
+          "type": "string",
+          "description": "Package being replaced (e.g., 'facade/ignition')"
+        },
+        "old_constraint": {
+          "type": "string",
+          "description": "Version constraint of the old package"
+        },
+        "new_package": {
+          "type": "string",
+          "description": "Replacement package (e.g., 'spatie/laravel-ignition')"
+        },
+        "new_constraint": {
+          "type": "string",
+          "description": "Version constraint of the new package"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this replacement is needed"
+        },
+        "rector_rules": {
+          "type": "array",
+          "description": "Rector rules that update code using this package",
+          "items": {
+            "type": "string"
+          }
+        },
+        "code_changes_required": {
+          "type": "boolean",
+          "description": "Whether code changes are required beyond composer.json"
+        },
+        "namespace_mappings": {
+          "type": "array",
+          "description": "Namespace mappings for the replacement",
+          "items": {
+            "type": "object",
+            "properties": {
+              "old": {
+                "type": "string",
+                "description": "Old namespace pattern"
+              },
+              "new": {
+                "type": "string",
+                "description": "New namespace pattern"
+              }
+            }
+          }
+        },
+        "manual_review_required": {
+          "type": "boolean",
+          "description": "Whether manual review is required even with Rector rules"
+        },
+        "approval_required": {
+          "type": "boolean",
+          "description": "Whether explicit approval is required for this replacement",
+          "default": true
+        }
+      }
+    },
+    "DependencyRemoval": {
+      "type": "object",
+      "required": ["package", "reason"],
+      "properties": {
+        "package": {
+          "type": "string",
+          "description": "Package to be removed"
+        },
+        "constraint": {
+          "type": "string",
+          "description": "Version constraint pattern to match"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this package should be removed"
+        },
+        "replacement": {
+          "type": "string",
+          "description": "Optional replacement package if functionality is moved elsewhere"
+        },
+        "approval_required": {
+          "type": "boolean",
+          "description": "Whether explicit approval is required",
+          "default": true
+        },
+        "safe_if_unused": {
+          "type": "boolean",
+          "description": "Whether removal is safe if package is not used in code",
+          "default": false
+        },
+        "affects_lumen_only": {
+          "type": "boolean",
+          "description": "Whether this removal only applies to Lumen migrations",
+          "default": false
+        }
+      }
+    }
+  }
+}
