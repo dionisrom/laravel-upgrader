@@ -53,5 +53,5 @@ return $config
         HttpKernelMiddlewareRector::class,
     ], $packageRules))
 
-    ->withParallel()
+    ->withoutParallel()
     ->withImportNames(importDocBlockNames: false);

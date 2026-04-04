@@ -192,7 +192,7 @@ final class RouterToFacadeVisitor extends NodeVisitorAbstract
 
     public function __construct(private readonly string $file) {}
 
-    public function leaveNode(Node $node): Node|null
+    public function leaveNode(Node $node): ?Node
     {
         // Transform $router->method(...) → Route::method(...)
         if (!($node instanceof MethodCall)) {
@@ -245,7 +245,7 @@ final class RouterToFacadeVisitor extends NodeVisitorAbstract
         return null;
     }
 
-    public function enterNode(Node $node): Node|null
+    public function enterNode(Node $node): ?Node
     {
         // Flag closures that reference $app (Lumen DI pattern)
         if (!($node instanceof Closure)) {

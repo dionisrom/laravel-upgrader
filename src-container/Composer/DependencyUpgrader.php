@@ -18,6 +18,7 @@ final class DependencyUpgrader
         private readonly ConflictResolver $conflictResolver,
         private readonly string $frameworkPackage = self::FRAMEWORK_PACKAGE,
         private readonly string $frameworkTarget = self::FRAMEWORK_TARGET,
+        private readonly GitSafeDirectoryManager $safeDirectoryManager = new GitSafeDirectoryManager(),
     ) {}
 
     /**
@@ -212,6 +213,8 @@ final class DependencyUpgrader
 
     private function runComposerInstall(string $workspacePath): void
     {
+        $this->markWorkspaceAsSafeDirectory($workspacePath);
+
         // Remove stale lock file — the constraints were just modified, so the
         // old lock is incompatible. Removing it lets `composer install` perform
         // a full resolution as required by TRD-COMP-003.
@@ -220,19 +223,135 @@ final class DependencyUpgrader
             unlink($lockFile);
         }
 
+        [$composerEnv, $cleanupCacheDir] = $this->prepareComposerEnvironment();
+
         $process = new Process(
             command: ['composer', 'install', '--no-interaction', '--prefer-dist', '--no-scripts'],
             cwd: $workspacePath,
             timeout: 300,
         );
 
+        if ($composerEnv !== []) {
+            $process->setEnv($composerEnv);
+        }
+
         $process->run();
+
+        if ($cleanupCacheDir !== null) {
+            $this->removeDirectory($cleanupCacheDir);
+        }
 
         if (!$process->isSuccessful()) {
             throw new \RuntimeException(
                 'composer install failed: ' . $process->getErrorOutput()
             );
         }
+    }
+
+    /**
+     * @return array{array<string, string>, string|null}
+     */
+    private function prepareComposerEnvironment(): array
+    {
+        $extraCacheDir = getenv('UPGRADER_EXTRA_COMPOSER_CACHE_DIR');
+        if (!is_string($extraCacheDir) || trim($extraCacheDir) === '' || !is_dir($extraCacheDir)) {
+            return [[], null];
+        }
+
+        $mergedCacheDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'upgrader-composer-cache-' . bin2hex(random_bytes(4));
+        if (!mkdir($mergedCacheDir, 0700, true) && !is_dir($mergedCacheDir)) {
+            throw new \RuntimeException("Failed to create merged Composer cache directory: {$mergedCacheDir}");
+        }
+
+        $defaultCacheDir = $this->defaultComposerCacheDir();
+        $this->mergeDirectoryInto($defaultCacheDir, $mergedCacheDir);
+        $this->mergeDirectoryInto($extraCacheDir, $mergedCacheDir);
+        $this->markComposerCacheAsSafeDirectory($mergedCacheDir);
+
+        return [['COMPOSER_CACHE_DIR' => $mergedCacheDir], $mergedCacheDir];
+    }
+
+    private function defaultComposerCacheDir(): string
+    {
+        $composerHome = getenv('COMPOSER_HOME');
+        if (!is_string($composerHome) || trim($composerHome) === '') {
+            $home = getenv('HOME');
+            $composerHome = is_string($home) && trim($home) !== ''
+                ? rtrim($home, '/\\') . DIRECTORY_SEPARATOR . '.composer'
+                : '/home/upgrader/.composer';
+        }
+
+        return rtrim($composerHome, '/\\') . DIRECTORY_SEPARATOR . 'cache';
+    }
+
+    private function markWorkspaceAsSafeDirectory(string $workspacePath): void
+    {
+        $this->safeDirectoryManager->markDirectory($workspacePath);
+    }
+
+    private function markComposerCacheAsSafeDirectory(string $cacheDir): void
+    {
+        $this->safeDirectoryManager->markComposerCacheDirectories($cacheDir);
+    }
+
+    private function mergeDirectoryInto(string $sourceDir, string $targetDir): void
+    {
+        if (!is_dir($sourceDir)) {
+            return;
+        }
+
+        /** @var \RecursiveIteratorIterator<\RecursiveDirectoryIterator> $iterator */
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($sourceDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST,
+        );
+
+        foreach ($iterator as $item) {
+            /** @var \SplFileInfo $item */
+            $relativePath = substr($item->getPathname(), strlen($sourceDir) + 1);
+            $targetPath = $targetDir . DIRECTORY_SEPARATOR . $relativePath;
+
+            if ($item->isDir()) {
+                if (!is_dir($targetPath) && !mkdir($targetPath, 0700, true)) {
+                    throw new \RuntimeException("Failed to create Composer cache directory: {$targetPath}");
+                }
+
+                continue;
+            }
+
+            $parentDir = dirname($targetPath);
+            if (!is_dir($parentDir) && !mkdir($parentDir, 0700, true)) {
+                throw new \RuntimeException("Failed to create Composer cache parent directory: {$parentDir}");
+            }
+
+            if (!copy($item->getPathname(), $targetPath)) {
+                throw new \RuntimeException("Failed to copy Composer cache file: {$item->getPathname()}");
+            }
+        }
+    }
+
+    private function removeDirectory(string $directory): void
+    {
+        if (!is_dir($directory)) {
+            return;
+        }
+
+        /** @var \RecursiveIteratorIterator<\RecursiveDirectoryIterator> $iterator */
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST,
+        );
+
+        foreach ($iterator as $item) {
+            /** @var \SplFileInfo $item */
+            if ($item->isDir()) {
+                @rmdir($item->getPathname());
+            } else {
+                @unlink($item->getPathname());
+            }
+        }
+
+        @rmdir($directory);
     }
 
     private function isPlatformRequirement(string $package): bool

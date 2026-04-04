@@ -135,7 +135,7 @@ final class HandlerClassVisitor extends NodeVisitorAbstract
 
     public function __construct(private readonly string $file) {}
 
-    public function enterNode(Node $node): Node|null
+    public function enterNode(Node $node): ?Node
     {
         // Collect use imports to resolve aliases
         if ($node instanceof Node\Stmt\Use_) {
@@ -149,7 +149,7 @@ final class HandlerClassVisitor extends NodeVisitorAbstract
         return null;
     }
 
-    public function leaveNode(Node $node): Node|null
+    public function leaveNode(Node $node): ?Node
     {
         if (!($node instanceof Node\Stmt\Class_)) {
             return null;

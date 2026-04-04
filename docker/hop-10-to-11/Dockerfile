@@ -6,7 +6,8 @@
 # ============================================================
 
 # ─── Stage 1: Base ────────────────────────────────────────────────────────────
-FROM php:8.2-cli-alpine AS base
+ARG PHP_BASE_IMAGE=php:8.2-cli-alpine
+FROM ${PHP_BASE_IMAGE} AS base
 
 RUN apk add --no-cache \
     bash \

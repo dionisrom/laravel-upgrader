@@ -433,6 +433,53 @@ final class WorkspaceManagerTest extends TestCase
         $this->manager->cleanup($workspacePath);
     }
 
+    public function testWriteBackPreservesVendorDirectoryContents(): void
+    {
+        $repoPath = $this->makeFixtureRepo();
+        mkdir($repoPath . '/vendor/package', 0700, true);
+        file_put_contents($repoPath . '/vendor/package/original.txt', "keep\n");
+
+        $workspacePath = $this->manager->createWorkspace($repoPath, '10');
+        mkdir($workspacePath . '/vendor/package', 0700, true);
+        file_put_contents($workspacePath . '/vendor/package/original.txt', "replace\n");
+        file_put_contents($workspacePath . '/vendor/package/new.txt', "new\n");
+        file_put_contents($workspacePath . '/app/Changed.php', "<?php\n");
+
+        $this->manager->writeBack($workspacePath, $repoPath);
+
+        $this->assertSame("keep\n", file_get_contents($repoPath . '/vendor/package/original.txt'));
+        $this->assertFileDoesNotExist($repoPath . '/vendor/package/new.txt');
+        $this->assertFileExists($repoPath . '/app/Changed.php');
+
+        $this->manager->cleanup($workspacePath);
+    }
+
+    public function testWriteBackSupportsWindowsShortWorkspacePaths(): void
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            $this->markTestSkipped('DOS short path regression only applies on Windows.');
+        }
+
+        $repoPath = $this->makeFixtureRepo();
+        $workspacePath = $this->manager->createWorkspace($repoPath, '10');
+
+        $nestedDir = $workspacePath . '/app/Nested/Deep';
+        mkdir($nestedDir, 0700, true);
+        file_put_contents($nestedDir . '/CLAUDE.md', "copied\n");
+
+        $shortWorkspacePath = $this->toWindowsShortPath($workspacePath);
+        if ($shortWorkspacePath === null || strcasecmp($shortWorkspacePath, $workspacePath) === 0) {
+            $this->markTestSkipped('8.3 short path is not available on this Windows volume.');
+        }
+
+        $this->manager->writeBack($shortWorkspacePath, $repoPath);
+
+        $this->assertFileExists($repoPath . '/app/Nested/Deep/CLAUDE.md');
+        $this->assertSame("copied\n", file_get_contents($repoPath . '/app/Nested/Deep/CLAUDE.md'));
+
+        $this->manager->cleanup($workspacePath);
+    }
+
     // -----------------------------------------------------------------------
     // cleanup
     // -----------------------------------------------------------------------
@@ -571,5 +618,18 @@ final class WorkspaceManagerTest extends TestCase
         }
 
         rmdir($path);
+    }
+
+    private function toWindowsShortPath(string $path): ?string
+    {
+        $escapedPath = str_replace('"', '""', $path);
+        $output = shell_exec('cmd /c for %I in ("' . $escapedPath . '") do @echo %~sI');
+        if (!is_string($output)) {
+            return null;
+        }
+
+        $shortPath = trim($output);
+
+        return $shortPath !== '' ? $shortPath : null;
     }
 }

@@ -172,6 +172,8 @@ final class InventoryScanner
         string $hop,
         int $seq
     ): void {
+        $repoLabel = trim((string) (getenv('UPGRADER_REPO_LABEL') ?: ''));
+
         $event = [
             'event'        => 'pipeline_start',
             'total_files'  => $totalFiles,
@@ -181,6 +183,10 @@ final class InventoryScanner
             'ts'           => time(),
             'seq'          => $seq,
         ];
+
+        if ($repoLabel !== '') {
+            $event['repo'] = $repoLabel;
+        }
 
         echo json_encode($event) . "\n";
     }

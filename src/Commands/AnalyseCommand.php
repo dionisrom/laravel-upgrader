@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Commands;
 
+use App\Composer\FrameworkDetector;
 use App\Composer\LaravelVersionDetector;
+use App\Composer\PhpConstraintDetector;
 use App\Orchestrator\AuditLogWriter;
 use App\Orchestrator\DockerRunner;
 use App\Orchestrator\EventStreamer;
@@ -106,7 +108,7 @@ final class AnalyseCommand extends Command
 
         // 5. Set up EventStreamer (dry-run: TerminalRenderer only, no write-back)
         $streamer = new EventStreamer();
-        $streamer->addConsumer(new TerminalRenderer($safeOutput));
+        $streamer->addConsumer(new TerminalRenderer($safeOutput, $repo));
 
         $logPath = rtrim($outputDir, '/') . '/audit.jsonnd';
         $repoSha = substr(hash('sha256', $repo . time()), 0, 12);
@@ -129,6 +131,23 @@ final class AnalyseCommand extends Command
             return Command::FAILURE;
         }
 
+        $frameworkDetector = new FrameworkDetector();
+        $framework = $frameworkDetector->detect($fetchResult->workspacePath);
+        if ($framework === 'lumen_ambiguous') {
+            $safeOutput->writeln('<error>Detected ambiguous Lumen markers in composer.json or bootstrap/app.php. The upgrader cannot safely choose the Laravel hop path for this repository. Aborting.</error>');
+            return Command::FAILURE;
+        }
+
+        if ($framework === 'lumen') {
+            $safeOutput->writeln('<info>Detected a Lumen application. Routing to the dedicated Lumen migration pipeline.</info>');
+        }
+
+        $phpConstraintDetector = new PhpConstraintDetector();
+        $phpConstraint = $phpConstraintDetector->detect($fetchResult->workspacePath);
+        if ($phpConstraint !== null) {
+            $safeOutput->writeln(sprintf('<info>Detected PHP requirement from composer.json: %s</info>', $phpConstraint));
+        }
+
         // 6b. Auto-detect --from version if not provided
         if ($from === null) {
             $detector = new LaravelVersionDetector();
@@ -144,7 +163,13 @@ final class AnalyseCommand extends Command
         // 7. Run orchestrator in dry-run mode (no Docker hops, no writeBack)
         $workspaceManager = new WorkspaceManager();
         $orchestrator = new UpgradeOrchestrator(
-            new HopPlanner(),
+            $framework === 'lumen'
+                ? new HopPlanner(
+                    hopImages: ['8:9' => 'upgrader/lumen-migrator'],
+                    phpConstraint: $phpConstraint,
+                    frameworkType: 'lumen',
+                )
+                : new HopPlanner(phpConstraint: $phpConstraint),
             new DockerRunner(),
             $workspaceManager,
             $streamer,
@@ -153,7 +178,7 @@ final class AnalyseCommand extends Command
         $safeOutput->writeln('<info>Running analysis (dry-run, no transforms will be applied)...</info>');
 
         try {
-            $orchestrator->run($fetchResult->workspacePath, $from, $to, new UpgradeOptions(dryRun: true));
+            $orchestrator->run($fetchResult->workspacePath, $from, $to, new UpgradeOptions(dryRun: true, repoLabel: $repo));
         } catch (OrchestratorException $e) {
             $safeOutput->writeln(sprintf('<error>Analysis failed: %s</error>', $this->redactor->redact($e->getMessage())));
             return Command::FAILURE;

@@ -12,6 +12,17 @@ use Symfony\Component\Process\Process;
 final class WorkspaceManager
 {
     private const DIR_MODE_WORKSPACE = 0700;
+    /** @var list<string> */
+    private const WRITEBACK_PRESERVED_PATHS = [
+        '.git',
+        '.svn',
+        '.hg',
+        'vendor',
+        'node_modules',
+        'storage',
+        'bootstrap/cache',
+        '.upgrader-state',
+    ];
     private const DEFAULT_CHECKPOINT_HOP = 'workspace_apply';
 
     /** @var \Closure(string): string */
@@ -539,8 +550,6 @@ final class WorkspaceManager
      */
     private function removeStaleFiles(string $target, string $source): void
     {
-        $preservedDirs = ['.git', '.svn', '.hg'];
-
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($target, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::CHILD_FIRST
@@ -551,11 +560,8 @@ final class WorkspaceManager
             $subPath = substr($item->getPathname(), strlen($target) + 1);
             $normalizedSubPath = str_replace('\\', '/', $subPath);
 
-            // Skip VCS directories and their contents
-            foreach ($preservedDirs as $preserved) {
-                if ($normalizedSubPath === $preserved || str_starts_with($normalizedSubPath, $preserved . '/')) {
-                    continue 2;
-                }
+            if ($this->shouldPreserveOnWriteBack($normalizedSubPath)) {
+                continue;
             }
 
             $correspondingSource = $source . DIRECTORY_SEPARATOR . $subPath;
@@ -579,14 +585,26 @@ final class WorkspaceManager
      */
     private function copyDirectory(string $source, string $destination): void
     {
+        $realSource = realpath($source);
+        if ($realSource === false || !is_dir($realSource)) {
+            throw new WorkspaceException(sprintf('Source directory does not exist: %s', $source));
+        }
+
         $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($source, \RecursiveDirectoryIterator::SKIP_DOTS),
+            new \RecursiveDirectoryIterator($realSource, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::SELF_FIRST
         );
 
         foreach ($iterator as $item) {
             /** @var \SplFileInfo $item */
-            $subPath = substr($item->getPathname(), strlen($source) + 1);
+            $itemPath = $item->getPathname();
+            $subPath = substr($itemPath, strlen($realSource) + 1);
+            $normalizedSubPath = str_replace('\\', '/', $subPath);
+
+            if ($this->shouldPreserveOnWriteBack($normalizedSubPath)) {
+                continue;
+            }
+
             $targetPath = $this->normalizePath($destination . DIRECTORY_SEPARATOR . $subPath);
 
             if ($item->isDir()) {
@@ -596,11 +614,27 @@ final class WorkspaceManager
                     }
                 }
             } else {
-                if (!copy($item->getPathname(), $targetPath)) {
-                    throw new WorkspaceException(sprintf('Failed to copy file: %s', $item->getPathname()));
+                $targetDirectory = dirname($targetPath);
+                if (!is_dir($targetDirectory) && !mkdir($targetDirectory, self::DIR_MODE_WORKSPACE, true) && !is_dir($targetDirectory)) {
+                    throw new WorkspaceException(sprintf('Failed to create parent directory: %s', $targetDirectory));
+                }
+
+                if (!copy($itemPath, $targetPath)) {
+                    throw new WorkspaceException(sprintf('Failed to copy file: %s', $itemPath));
                 }
             }
         }
+    }
+
+    private function shouldPreserveOnWriteBack(string $normalizedSubPath): bool
+    {
+        foreach (self::WRITEBACK_PRESERVED_PATHS as $preservedPath) {
+            if ($normalizedSubPath === $preservedPath || str_starts_with($normalizedSubPath, $preservedPath . '/')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -11,6 +11,7 @@ final readonly class PipelineStartEvent extends BaseEvent
         string $hop,
         float $ts,
         int $seq,
+        public ?string $repo,
         public int $totalFiles,
         public int $phpFiles,
         public int $configFiles,
@@ -28,6 +29,7 @@ final readonly class PipelineStartEvent extends BaseEvent
             hop:         (string) ($data['hop'] ?? ''),
             ts:          (float)  ($data['ts'] ?? 0.0),
             seq:         (int)    ($data['seq'] ?? 0),
+            repo:        isset($data['repo']) ? trim((string) $data['repo']) : null,
             totalFiles:  (int)    ($data['total_files'] ?? 0),
             phpFiles:    (int)    ($data['php_files'] ?? 0),
             configFiles: (int)    ($data['config_files'] ?? 0),
@@ -39,10 +41,16 @@ final readonly class PipelineStartEvent extends BaseEvent
      */
     public function toArray(): array
     {
-        return array_merge(parent::toArray(), [
+        $event = [
             'total_files'  => $this->totalFiles,
             'php_files'    => $this->phpFiles,
             'config_files' => $this->configFiles,
-        ]);
+        ];
+
+        if ($this->repo !== null && $this->repo !== '') {
+            $event['repo'] = $this->repo;
+        }
+
+        return array_merge(parent::toArray(), $event);
     }
 }

@@ -18,6 +18,10 @@ namespace AppContainer\Lumen;
  */
 final class FacadeBootstrapMigrator
 {
+    public function __construct(
+        private readonly BootstrapMethodCallDetector $methodCallDetector = new BootstrapMethodCallDetector(),
+    ) {}
+
     public function migrate(string $workspacePath): FacadeBootstrapResult
     {
         $bootstrapFile = $workspacePath . '/bootstrap/app.php';
@@ -29,8 +33,8 @@ final class FacadeBootstrapMigrator
 
         $code = (string) file_get_contents($bootstrapFile);
 
-        $facadesFound  = $this->hasMethodCall($code, 'withFacades');
-        $eloquentFound = $this->hasMethodCall($code, 'withEloquent');
+        $facadesFound  = $this->methodCallDetector->hasMethodCall($code, 'withFacades');
+        $eloquentFound = $this->methodCallDetector->hasMethodCall($code, 'withEloquent');
 
         if (!$facadesFound) {
             $this->emitEvent('lumen_feature_disabled', [
@@ -48,15 +52,6 @@ final class FacadeBootstrapMigrator
         $this->emitSummary($result);
 
         return $result;
-    }
-
-    /**
-     * Simple string-based detection — avoids full AST parse overhead for a
-     * two-method lookup. Pattern matches `->withFacades(` anywhere in the file.
-     */
-    private function hasMethodCall(string $code, string $method): bool
-    {
-        return str_contains($code, "->{$method}(");
     }
 
     private function emitSummary(FacadeBootstrapResult $result): void

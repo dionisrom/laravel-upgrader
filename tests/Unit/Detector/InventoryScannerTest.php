@@ -193,10 +193,15 @@ final class InventoryScannerTest extends TestCase
     public function testEmitsPipelineStartEvent(): void
     {
         $workspace = $this->buildMinimalLaravelWorkspace();
+        putenv('UPGRADER_REPO_LABEL=fixture-repo');
 
         ob_start();
-        $this->scanner->scan($workspace, '8_to_9', 1);
-        $output = (string) ob_get_clean();
+        try {
+            $this->scanner->scan($workspace, '8_to_9', 1);
+            $output = (string) ob_get_clean();
+        } finally {
+            putenv('UPGRADER_REPO_LABEL');
+        }
 
         // May contain a warning event from framework detection before pipeline_start,
         // so locate the pipeline_start line
@@ -215,6 +220,7 @@ final class InventoryScannerTest extends TestCase
         self::assertSame('pipeline_start', $pipelineEvent['event']);
         self::assertSame('8_to_9', $pipelineEvent['hop']);
         self::assertSame(1, $pipelineEvent['seq']);
+        self::assertSame('fixture-repo', $pipelineEvent['repo']);
         self::assertArrayHasKey('total_files', $pipelineEvent);
         self::assertArrayHasKey('php_files', $pipelineEvent);
         self::assertArrayHasKey('config_files', $pipelineEvent);

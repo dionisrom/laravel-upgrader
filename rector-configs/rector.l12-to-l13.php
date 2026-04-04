@@ -54,5 +54,5 @@ return $config
         $packageRules,
     ))
 
-    ->withParallel()
+    ->withoutParallel()
     ->withImportNames(importDocBlockNames: false);

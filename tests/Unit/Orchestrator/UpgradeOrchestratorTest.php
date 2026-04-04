@@ -54,6 +54,151 @@ final class UpgradeOrchestratorTest extends TestCase
         self::assertCount(1, $result->hops);
     }
 
+    public function testStagesWorkspaceIntoMountedHopOutputBeforeDockerRuns(): void
+    {
+        $mountedComposerExists = false;
+
+        $processFactory = static function (array $cmd) use (&$mountedComposerExists): Process {
+            $mountIndex = array_search('-v', $cmd, true);
+            self::assertNotFalse($mountIndex);
+
+            $mountSpec = $cmd[$mountIndex + 1] ?? '';
+            [$hostPath] = explode(':/repo:rw', $mountSpec, 2);
+
+            $mountedComposerExists = file_exists($hostPath . DIRECTORY_SEPARATOR . 'composer.json');
+
+            return new Process(
+                ['php', '-r', 'echo json_encode(["event" => "pipeline_complete", "passed" => true]) . PHP_EOL;'],
+            );
+        };
+
+        $orchestrator = $this->buildOrchestrator($processFactory);
+        $orchestrator->run($this->repoDir, '8', '9');
+
+        self::assertTrue($mountedComposerExists, 'Expected hop output mount to contain composer.json before Docker starts.');
+    }
+
+    public function testPrimesComposerCacheForRemoteVcsRepositoriesBeforeHopRuns(): void
+    {
+        file_put_contents($this->repoDir . DIRECTORY_SEPARATOR . 'composer.json', json_encode([
+            'name' => 'test/app',
+            'repositories' => [[
+                'type' => 'git',
+                'url' => 'git@internal.example.com:team/private-package.git',
+            ]],
+            'require' => [
+                'php' => '^8.2',
+            ],
+        ], JSON_PRETTY_PRINT));
+
+        $primerRan = false;
+        $dependencyPreStageRan = false;
+        $runtimeSawCacheMount = false;
+        $runtimeSkippedDependencyUpgrader = false;
+
+        $originalComposerCacheDir = getenv('COMPOSER_CACHE_DIR');
+        $originalLocalAppData = getenv('LOCALAPPDATA');
+        $originalAppData = getenv('APPDATA');
+        $originalHome = getenv('HOME');
+
+        putenv('COMPOSER_CACHE_DIR');
+        putenv('LOCALAPPDATA=' . $this->tempBase . DIRECTORY_SEPARATOR . 'no-cache-local');
+        putenv('APPDATA=' . $this->tempBase . DIRECTORY_SEPARATOR . 'no-cache-roaming');
+        putenv('HOME=' . $this->tempBase . DIRECTORY_SEPARATOR . 'no-cache-home');
+
+        try {
+            $processFactory = static function (array $cmd) use (&$primerRan, &$dependencyPreStageRan, &$runtimeSawCacheMount, &$runtimeSkippedDependencyUpgrader): Process {
+                if (in_array('/upgrader/src/Composer/RepositoryCachePrimer.php', $cmd, true)) {
+                    $primerRan = true;
+                    return new Process(['php', '-r', 'exit(0);']);
+                }
+
+                if (in_array('/upgrader/src/Composer/DependencyUpgrader.php', $cmd, true)) {
+                    $dependencyPreStageRan = true;
+                    return new Process(['php', '-r', 'echo json_encode(["type" => "composer.completed", "data" => ["packages_updated" => 1]]) . PHP_EOL;']);
+                }
+
+                $runtimeSawCacheMount = in_array('UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache', $cmd, true);
+                $runtimeSkippedDependencyUpgrader = in_array('UPGRADER_SKIP_DEPENDENCY_UPGRADER=1', $cmd, true);
+
+                return new Process(
+                    ['php', '-r', 'echo json_encode(["event" => "pipeline_complete", "passed" => true]) . PHP_EOL;'],
+                );
+            };
+
+            $orchestrator = $this->buildOrchestrator($processFactory);
+            $orchestrator->run($this->repoDir, '8', '9');
+
+            self::assertTrue($primerRan, 'Expected remote VCS repositories to trigger composer cache priming.');
+            self::assertTrue($dependencyPreStageRan, 'Expected remote VCS repositories to trigger a networked dependency pre-stage.');
+            self::assertTrue($runtimeSawCacheMount, 'Expected primed Composer cache to be mounted into the isolated hop container.');
+            self::assertTrue($runtimeSkippedDependencyUpgrader, 'Expected the isolated hop container to skip its own dependency stage after the pre-stage completed.');
+        } finally {
+            $this->restoreEnv('COMPOSER_CACHE_DIR', $originalComposerCacheDir);
+            $this->restoreEnv('LOCALAPPDATA', $originalLocalAppData);
+            $this->restoreEnv('APPDATA', $originalAppData);
+            $this->restoreEnv('HOME', $originalHome);
+        }
+    }
+
+    public function testReusesExistingComposerCacheWithoutRedundantPrimerOrPreStage(): void
+    {
+        file_put_contents($this->repoDir . DIRECTORY_SEPARATOR . 'composer.json', json_encode([
+            'name' => 'test/app',
+            'repositories' => [[
+                'type' => 'git',
+                'url' => 'git@internal.example.com:team/private-package.git',
+            ]],
+            'require' => [
+                'php' => '^8.2',
+            ],
+        ], JSON_PRETTY_PRINT));
+
+        $cacheDir = $this->tempBase . DIRECTORY_SEPARATOR . 'composer-cache';
+        mkdir($cacheDir . DIRECTORY_SEPARATOR . 'vcs', 0700, true);
+        file_put_contents($cacheDir . DIRECTORY_SEPARATOR . 'vcs' . DIRECTORY_SEPARATOR . 'cached-repo.txt', "cached\n");
+
+        $primerRan = false;
+        $dependencyPreStageRan = false;
+        $runtimeSawCacheMount = false;
+        $runtimeSkippedDependencyUpgrader = false;
+
+        $originalComposerCacheDir = getenv('COMPOSER_CACHE_DIR');
+
+        putenv('COMPOSER_CACHE_DIR=' . $cacheDir);
+
+        try {
+            $processFactory = static function (array $cmd) use (&$primerRan, &$dependencyPreStageRan, &$runtimeSawCacheMount, &$runtimeSkippedDependencyUpgrader): Process {
+                if (in_array('/upgrader/src/Composer/RepositoryCachePrimer.php', $cmd, true)) {
+                    $primerRan = true;
+                    return new Process(['php', '-r', 'exit(0);']);
+                }
+
+                if (in_array('/upgrader/src/Composer/DependencyUpgrader.php', $cmd, true)) {
+                    $dependencyPreStageRan = true;
+                    return new Process(['php', '-r', 'exit(0);']);
+                }
+
+                $runtimeSawCacheMount = in_array('UPGRADER_EXTRA_COMPOSER_CACHE_DIR=/composer-cache', $cmd, true);
+                $runtimeSkippedDependencyUpgrader = in_array('UPGRADER_SKIP_DEPENDENCY_UPGRADER=1', $cmd, true);
+
+                return new Process(
+                    ['php', '-r', 'echo json_encode(["event" => "pipeline_complete", "passed" => true]) . PHP_EOL;'],
+                );
+            };
+
+            $orchestrator = $this->buildOrchestrator($processFactory);
+            $orchestrator->run($this->repoDir, '8', '9');
+
+            self::assertFalse($primerRan, 'Expected an existing populated Composer cache to skip the network primer.');
+            self::assertFalse($dependencyPreStageRan, 'Expected an existing populated Composer cache to skip the network pre-stage.');
+            self::assertTrue($runtimeSawCacheMount, 'Expected the existing Composer cache to be mounted into the isolated hop container.');
+            self::assertFalse($runtimeSkippedDependencyUpgrader, 'Expected the isolated hop container to keep its own dependency stage when no pre-stage ran.');
+        } finally {
+            $this->restoreEnv('COMPOSER_CACHE_DIR', $originalComposerCacheDir);
+        }
+    }
+
     public function testVerificationFailureHalts(): void
     {
         $processFactory = static fn(array $cmd): Process => new Process(
@@ -157,6 +302,16 @@ final class UpgradeOrchestratorTest extends TestCase
             streamer: new EventStreamer(),
             checkpoints: $checkpoints,
         );
+    }
+
+    private function restoreEnv(string $name, string|false $value): void
+    {
+        if ($value === false) {
+            putenv($name);
+            return;
+        }
+
+        putenv($name . '=' . $value);
     }
 
     private function removeDir(string $dir): void

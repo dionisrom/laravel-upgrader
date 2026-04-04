@@ -31,6 +31,26 @@ final class HopPlannerTest extends TestCase
         self::assertStringContainsString('hop-8-to-9', $hop->dockerImage);
     }
 
+    public function testPlanSelectsPhpSpecificImageWhenConstraintRequiresHigherRuntime(): void
+    {
+        $planner = new HopPlanner(phpConstraint: '^8.3');
+
+        $sequence = $planner->plan('8', '9');
+
+        self::assertSame('8.3', $sequence->hops[0]->phpBase);
+        self::assertSame('upgrader/hop-8-to-9:php8.3', $sequence->hops[0]->dockerImage);
+    }
+
+    public function testPlanThrowsEarlyWhenNoCompatiblePhpRuntimeExists(): void
+    {
+        $planner = new HopPlanner(phpConstraint: '^8.4');
+
+        $this->expectException(InvalidHopException::class);
+        $this->expectExceptionMessageMatches('/No compatible PHP runtime/');
+
+        $planner->plan('8', '9');
+    }
+
     public function testPlanThrowsForSameVersion(): void
     {
         $this->expectException(InvalidHopException::class);

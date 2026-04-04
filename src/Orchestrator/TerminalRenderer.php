@@ -8,7 +8,10 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 final class TerminalRenderer implements EventConsumerInterface
 {
-    public function __construct(private readonly OutputInterface $output) {}
+    public function __construct(
+        private readonly OutputInterface $output,
+        private readonly ?string $repoLabel = null,
+    ) {}
 
     /**
      * @param array<string, mixed> $event
@@ -19,7 +22,7 @@ final class TerminalRenderer implements EventConsumerInterface
 
         switch ($type) {
             case 'pipeline_start':
-                $repo = (string) ($event['repo'] ?? 'unknown');
+                $repo = $this->resolvePipelineLabel($event);
                 $this->output->writeln(sprintf('<info>▶ Pipeline started for %s</info>', $repo));
                 break;
 
@@ -78,5 +81,23 @@ final class TerminalRenderer implements EventConsumerInterface
                 ));
                 break;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $event
+     */
+    private function resolvePipelineLabel(array $event): string
+    {
+        $repo = trim((string) ($event['repo'] ?? ''));
+        if ($repo !== '') {
+            return $repo;
+        }
+
+        $repoLabel = trim((string) ($this->repoLabel ?? ''));
+        if ($repoLabel !== '') {
+            return $repoLabel;
+        }
+
+        return 'unknown';
     }
 }

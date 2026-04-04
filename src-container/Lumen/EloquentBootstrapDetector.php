@@ -13,6 +13,10 @@ namespace AppContainer\Lumen;
  */
 final class EloquentBootstrapDetector
 {
+    public function __construct(
+        private readonly BootstrapMethodCallDetector $methodCallDetector = new BootstrapMethodCallDetector(),
+    ) {}
+
     public function detect(string $workspacePath): EloquentDetectionResult
     {
         $bootstrapFile = $workspacePath . '/bootstrap/app.php';
@@ -23,7 +27,7 @@ final class EloquentBootstrapDetector
         }
 
         $code = (string) file_get_contents($bootstrapFile);
-        $eloquentEnabled = str_contains($code, '->withEloquent(');
+        $eloquentEnabled = $this->methodCallDetector->hasMethodCall($code, 'withEloquent');
 
         if (!$eloquentEnabled) {
             $result = EloquentDetectionResult::disabled();

@@ -6,6 +6,7 @@ namespace Tests\Integration;
 
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Process\Process;
 
 /**
  * Integration test for the Lumen migration container.
@@ -65,6 +66,7 @@ final class LumenMigrationTest extends TestCase
             '--network=none',
             '-v', "{$this->tempWorkspace}:/workspace:rw",
             '--env', 'UPGRADER_WORKSPACE=/workspace',
+            '--env', 'UPGRADER_SKIP_PHPSTAN=1',
             self::DOCKER_IMAGE,
         ];
 
@@ -151,6 +153,22 @@ final class LumenMigrationTest extends TestCase
             $currentHash,
             'Original Lumen fixture files were modified by the integration test.',
         );
+
+        $composerPath = $this->tempWorkspace . DIRECTORY_SEPARATOR . 'composer.json';
+        self::assertFileExists($composerPath);
+
+        $composer = json_decode((string) file_get_contents($composerPath), true);
+        self::assertIsArray($composer);
+        self::assertArrayHasKey('laravel/framework', $composer['require']);
+        self::assertArrayNotHasKey('laravel/lumen-framework', $composer['require']);
+        self::assertArrayNotHasKey('flipbox/lumen-generator', $composer['require']);
+
+        self::assertFileExists($this->tempWorkspace . DIRECTORY_SEPARATOR . 'artisan');
+        self::assertFileExists($this->tempWorkspace . DIRECTORY_SEPARATOR . 'bootstrap' . DIRECTORY_SEPARATOR . 'lumen-app-original.php');
+        self::assertFileExists($this->tempWorkspace . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'app.php');
+        self::assertFileExists($this->tempWorkspace . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'database.php');
+        self::assertFileExists($this->tempWorkspace . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'auth.php');
+        self::assertFileExists($this->tempWorkspace . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Http' . DIRECTORY_SEPARATOR . 'Kernel.php');
     }
 
     public function testLumenBootstrapFileIsTransformed(): void
@@ -160,6 +178,7 @@ final class LumenMigrationTest extends TestCase
             '--network=none',
             '-v', "{$this->tempWorkspace}:/workspace:rw",
             '--env', 'UPGRADER_WORKSPACE=/workspace',
+            '--env', 'UPGRADER_SKIP_PHPSTAN=1',
             self::DOCKER_IMAGE,
         ];
 
@@ -180,6 +199,18 @@ final class LumenMigrationTest extends TestCase
             $bootstrapContent,
             'Lumen Application reference was not migrated in bootstrap/app.php',
         );
+
+        $handlerPath = $this->tempWorkspace . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'Exceptions' . DIRECTORY_SEPARATOR . 'Handler.php';
+        self::assertFileExists($handlerPath);
+        self::assertStringContainsString(
+            'Illuminate\\Foundation\\Exceptions\\Handler',
+            (string) file_get_contents($handlerPath),
+            'Exception handler was not migrated onto the Laravel base handler.',
+        );
+
+        $routesPath = $this->tempWorkspace . DIRECTORY_SEPARATOR . 'routes' . DIRECTORY_SEPARATOR . 'web.php';
+        self::assertFileExists($routesPath);
+        self::assertStringContainsString('Route::get', (string) file_get_contents($routesPath));
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -203,90 +234,31 @@ final class LumenMigrationTest extends TestCase
      */
     private function runProcess(array $command, int $timeoutSeconds): array
     {
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
+        $process = new Process($command, timeout: $timeoutSeconds);
+        $process->run();
+
+        return [
+            $process->getExitCode() ?? 1,
+            $process->getOutput(),
+            $process->getErrorOutput(),
         ];
-
-        $proc = proc_open($command, $descriptors, $pipes);
-        self::assertIsResource($proc, 'Failed to start Docker process');
-
-        fclose($pipes[0]);
-
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
-        $stdout = '';
-        $stderr = '';
-        $start  = time();
-
-        while (true) {
-            $read   = [$pipes[1], $pipes[2]];
-            $write  = null;
-            $except = null;
-
-            $changed = stream_select($read, $write, $except, 1);
-
-            if ($changed === false) {
-                break;
-            }
-
-            foreach ($read as $stream) {
-                $chunk = fread($stream, 8192);
-                if ($chunk !== false && $chunk !== '') {
-                    if ($stream === $pipes[1]) {
-                        $stdout .= $chunk;
-                    } else {
-                        $stderr .= $chunk;
-                    }
-                }
-            }
-
-            if (feof($pipes[1]) && feof($pipes[2])) {
-                break;
-            }
-
-            if ((time() - $start) > $timeoutSeconds) {
-                proc_terminate($proc, 9);
-                break;
-            }
-        }
-
-        $remaining1 = stream_get_contents($pipes[1]);
-        $remaining2 = stream_get_contents($pipes[2]);
-        if (is_string($remaining1)) {
-            $stdout .= $remaining1;
-        }
-        if (is_string($remaining2)) {
-            $stderr .= $remaining2;
-        }
-
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-
-        $exitCode = proc_close($proc);
-
-        return [$exitCode, $stdout, $stderr];
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    private function parseJsonNd(string $output): array
+    private function parseJsonNd(string $stdout): array
     {
         $events = [];
 
-        foreach (explode("\n", $output) as $line) {
-            $trimmed = trim($line);
-            if ($trimmed === '') {
+        foreach (preg_split('/\r?\n/', trim($stdout)) ?: [] as $line) {
+            $line = trim($line);
+            if ($line === '') {
                 continue;
             }
 
-            /** @var mixed $decoded */
-            $decoded = json_decode($trimmed, true);
+            $decoded = json_decode($line, true);
             if (is_array($decoded)) {
-                /** @var array<string, mixed> $decoded */
                 $events[] = $decoded;
             }
         }
@@ -299,10 +271,11 @@ final class LumenMigrationTest extends TestCase
      */
     private function extractConfidence(array $report): float
     {
+        if (isset($report['confidence']['score'])) {
+            return (float) $report['confidence']['score'];
+        }
+
         if (isset($report['confidence'])) {
-            if (is_array($report['confidence']) && isset($report['confidence']['score'])) {
-                return (float) $report['confidence']['score'];
-            }
             return (float) $report['confidence'];
         }
 

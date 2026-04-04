@@ -61,6 +61,16 @@ final class WorkspaceSkipPathsTest extends TestCase
         self::assertStringNotContainsString('importDocBlockClassNames:', $contents);
     }
 
+    #[DataProvider('hopConfigProvider')]
+    public function testHopConfigsDisableRectorParallelism(string $configPath): void
+    {
+        $contents = file_get_contents($configPath);
+
+        self::assertIsString($contents);
+        self::assertStringContainsString('->withoutParallel()', $contents);
+        self::assertStringNotContainsString('->withParallel(', $contents);
+    }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -76,6 +86,20 @@ final class WorkspaceSkipPathsTest extends TestCase
         yield 'package-livewire' => [$repoRoot . '/rector-configs/packages/rector.livewire-v2-v3.php'];
         yield 'package-filament' => [$repoRoot . '/rector-configs/packages/rector.filament-v2-v3.php'];
         yield 'package-medialibrary' => [$repoRoot . '/rector-configs/packages/rector.spatie-medialibrary-v9-v10.php'];
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function hopConfigProvider(): iterable
+    {
+        $repoRoot = dirname(__DIR__, 4);
+
+        yield 'hop-8-to-9' => [$repoRoot . '/rector-configs/rector.l8-to-l9.php'];
+        yield 'hop-9-to-10' => [$repoRoot . '/rector-configs/rector.l9-to-l10.php'];
+        yield 'hop-10-to-11' => [$repoRoot . '/rector-configs/rector.l10-to-l11.php'];
+        yield 'hop-11-to-12' => [$repoRoot . '/rector-configs/rector.l11-to-l12.php'];
+        yield 'hop-12-to-13' => [$repoRoot . '/rector-configs/rector.l12-to-l13.php'];
     }
 
     #[DataProvider('hopComposerProvider')]
