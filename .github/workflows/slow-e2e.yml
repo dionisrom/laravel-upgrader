@@ -29,7 +29,7 @@ jobs:
           driver: docker
 
       - name: Build hop images
-        run: docker buildx bake hop-8-to-9 hop-9-to-10 hop-10-to-11 hop-11-to-12 hop-12-to-13 --load
+        run: docker buildx bake hop-8-to-9 hop-9-to-10 hop-10-to-11 hop-11-to-12 hop-12-to-13
 
       - name: Run slow E2E suite with final-output PHPStan and container telemetry assertions
         env:
